@@ -1,21 +1,1026 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SoilSenses</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#2D5016">
+  <title>SoilSense – AI Soil Moisture Analyzer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Playfair+Display:wght@500&display=swap" rel="stylesheet">
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 2rem; line-height: 1.5; }
-    .card { max-width: 720px; padding: 1.5rem; border: 1px solid #ddd; border-radius: 12px; }
-    h1 { margin-top: 0; }
-    code { background: #f6f8fa; padding: 0.15rem 0.35rem; border-radius: 6px; }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{background:#EDE8E0;min-height:100%}
+    body{min-height:100%;display:flex;justify-content:center;background:#EDE8E0;font-family:'DM Sans',sans-serif}
+    #root{width:100%;max-width:560px;background:#fff;min-height:100vh;box-shadow:0 0 60px rgba(0,0,0,.10)}
+
+    :root{
+      --green:#2D5016;--green-m:#3B6912;--green-l:#6FA832;--green-bg:#F0F7E8;
+      --amber:#C87B00;--amber-bg:#FEF3E2;
+      --red:#B91C1C;--red-bg:#FFF5F5;
+      --blue:#1565C0;--blue-bg:#E3F2FD;
+      --teal:#0F6E56;--teal-bg:#E0F4F1;
+      --dry:#C4661A;--dry-bg:#FDF0E6;
+      --text1:#1C1A17;--text2:#6B6760;--text3:#9A9690;
+      --bg1:#FFFFFF;--bg2:#F8F5F0;--bg3:#F1EDE6;
+      --border1:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.12);
+      --radius-sm:8px;--radius-md:12px;--radius-lg:16px;
+    }
+
+    .app{font-family:'DM Sans',sans-serif;max-width:560px;width:100%}
+    .header{display:flex;align-items:center;gap:10px;padding:.9rem 1rem .7rem;border-bottom:1px solid var(--border1);background:#fff;position:sticky;top:0;z-index:10}
+    .logo-mark{width:36px;height:36px;border-radius:9px;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+    .app-name{font-family:'Playfair Display',serif;font-size:18px;color:var(--text1);line-height:1}
+    .app-sub{font-size:11px;color:var(--text2);margin-top:1px}
+    .header-actions{margin-left:auto;display:flex;gap:6px;align-items:center}
+
+    .nav{display:grid;grid-template-columns:repeat(5,1fr);background:var(--bg2);border-bottom:1px solid var(--border1);padding:0}
+    .nav-btn{border:none;background:transparent;cursor:pointer;padding:9px 4px 7px;font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;align-items:center;gap:3px;transition:all .15s;border-bottom:2px solid transparent}
+    .nav-btn:hover{background:var(--bg1)}
+    .nav-icon{font-size:18px;line-height:1}
+    .nav-lbl{font-size:10px;font-weight:500;color:var(--text2);letter-spacing:.01em}
+    .nav-btn.active .nav-lbl{color:var(--green-m)}
+    .nav-btn.active{border-bottom:2px solid var(--green-m);background:var(--bg1)}
+    .nav-badge{background:var(--red);color:#fff;border-radius:10px;font-size:9px;font-weight:600;padding:1px 5px;margin-left:2px;line-height:1.4}
+
+    .content{padding:.9rem 1rem 3rem}
+
+    .card{background:var(--bg1);border:1px solid var(--border1);border-radius:var(--radius-lg);padding:1.1rem;margin-bottom:.8rem}
+    .card-label{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:9px}
+
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border-radius:var(--radius-md);border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;transition:all .15s}
+    .btn:active{transform:scale(.97)}
+    .btn-primary{background:var(--green-m);color:#fff}
+    .btn-primary:hover{background:var(--green)}
+    .btn-primary:disabled{background:#aac48a;cursor:not-allowed;transform:none}
+    .btn-secondary{background:var(--green-bg);color:var(--green);border:1px solid #c8e4a0}
+    .btn-secondary:hover{background:#e0f0d0}
+    .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}
+    .btn-ghost:hover{background:var(--bg2)}
+    .btn-danger{background:var(--red-bg);color:var(--red);border:1px solid #fecaca}
+    .btn-full{width:100%}
+
+    .inp{padding:10px 13px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--bg2);color:var(--text1);font-family:'DM Sans',sans-serif;font-size:14px;width:100%;transition:border-color .15s}
+    .inp:focus{outline:none;border-color:var(--green-m)}
+
+    .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500}
+
+    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:.8rem}
+    .metric{background:var(--bg2);border-radius:var(--radius-md);padding:10px 7px;text-align:center;border:1px solid var(--border1)}
+    .metric-val{font-size:20px;font-weight:600;color:var(--text1);line-height:1.1;margin-bottom:2px}
+    .metric-lbl{font-size:10px;color:var(--text2);font-weight:500}
+
+    .crop-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+    .crop-btn{border:1.5px solid var(--border1);border-radius:var(--radius-md);padding:9px 5px;background:var(--bg1);cursor:pointer;text-align:center;font-family:'DM Sans',sans-serif;transition:all .15s}
+    .crop-btn:hover,.crop-btn.sel{border-color:var(--green-m)}
+    .crop-btn.sel{background:var(--green-bg)}
+
+    .step-dot{width:24px;height:24px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--text2);background:var(--bg1);flex-shrink:0;transition:all .2s}
+    .step-dot.active{border-color:var(--green-m);color:var(--green-m)}
+    .step-dot.done{background:var(--green-m);border-color:var(--green-m);color:#fff}
+    .step-line{flex:1;height:1.5px;background:var(--border1)}
+    .step-line.done{background:var(--green-m)}
+    .step-lbl{font-size:10px;color:var(--text2);margin-top:3px}
+    .step-lbl.active{color:var(--green-m);font-weight:500}
+
+    .upload-zone{border:2px dashed var(--border2);border-radius:var(--radius-lg);padding:2.2rem 1rem;text-align:center;cursor:pointer;background:var(--bg2);transition:all .15s}
+    .upload-zone:hover{border-color:var(--green-m);background:var(--green-bg)}
+
+    .week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:1rem}
+    .wday{border-radius:var(--radius-sm);padding:7px 3px;text-align:center;cursor:pointer;border:1px solid transparent;transition:all .15s}
+    .wday:hover{background:var(--bg2)}
+    .wday.today{border-color:var(--green-m)}
+    .wday.selected{background:var(--green-bg);border-color:var(--green-m)}
+    .wday-name{font-size:10px;color:var(--text2);margin-bottom:3px;font-weight:500}
+    .wday-num{font-size:13px;font-weight:500;color:var(--text1)}
+    .wday-dot{width:5px;height:5px;border-radius:50%;margin:3px auto 0;background:transparent}
+    .wday-dot.has{background:var(--green-m)}
+    .wday-dot.overdue{background:var(--red)}
+
+    .reading-row{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--border1)}
+    .reading-row:last-child{border-bottom:none}
+    .reading-thumb{width:46px;height:46px;border-radius:9px;object-fit:cover;flex-shrink:0}
+    .reading-placeholder{width:46px;height:46px;border-radius:9px;background:var(--green-bg);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+
+    .field-card{border-left:3px solid var(--green-m);padding-left:calc(1.1rem - 3px)}
+
+    .forecast-scroll{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:8px}
+    .fc-card{background:var(--bg2);border-radius:var(--radius-md);padding:9px 4px;text-align:center;border:1px solid var(--border1)}
+    .fc-day{font-size:10px;color:var(--text2);margin-bottom:4px;font-weight:500}
+    .fc-icon{font-size:18px;line-height:1;margin-bottom:4px}
+    .fc-temp{font-size:11px;color:var(--text1);font-weight:500}
+    .fc-rain{font-size:10px;color:var(--blue);margin-top:2px}
+
+    .scheck{width:22px;height:22px;border-radius:5px;border:1.5px solid var(--border2);background:transparent;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;transition:all .15s}
+    .scheck.done{background:var(--green-m);border-color:var(--green-m)}
+    .tip-box{background:var(--green-bg);border:1px solid #c8e4a0;border-radius:var(--radius-md);padding:11px 13px;margin-top:.8rem}
+    .err-box{background:var(--red-bg);border:1px solid #fecaca;border-radius:var(--radius-md);padding:10px 13px;color:var(--red);font-size:13px;margin:.5rem 0}
+    .adv-box{border-radius:var(--radius-md);padding:12px 14px;margin-bottom:.8rem}
+    .stat-pill{display:inline-flex;align-items:center;gap:4px;background:var(--bg2);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--text2);border:1px solid var(--border1)}
+    .mini-bar-bg{height:5px;border-radius:3px;background:var(--border1);margin:.4rem 0}
+    .empty{text-align:center;padding:2.5rem 1rem;color:var(--text2)}
+    .empty-icon{font-size:40px;margin-bottom:10px}
+    .empty-title{font-size:15px;font-weight:500;color:var(--text1);margin-bottom:5px}
+    .empty-sub{font-size:13px;line-height:1.5}
+
+    .spinner{width:17px;height:17px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+    .spin-g{width:30px;height:30px;border:3px solid var(--border1);border-top-color:var(--green-m);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* Settings overlay */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:flex;align-items:center;justify-content:center;padding:1.2rem}
+    .overlay-card{background:#fff;border-radius:var(--radius-lg);padding:1.5rem;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+
+    video{width:100%;display:block;max-height:240px;object-fit:cover}
+    canvas{display:none}
+
+    /* Scrollbar */
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>SoilSenses</h1>
-    <p>This is a placeholder <code>index.html</code> page.</p>
-    <p>Replace this file with your site content.</p>
-  </div>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
+const {useState,useRef,useEffect,useCallback,useMemo}=React;
+
+// ── localStorage wrapper (replaces window.storage) ──
+const db={
+  get:async k=>{try{const v=localStorage.getItem('ss_'+k);return v?{value:v}:null;}catch{return null;}},
+  set:async(k,v)=>{try{localStorage.setItem('ss_'+k,v);return{value:v};}catch{return null;}},
+};
+
+// ── Constants ──
+const CROPS=[
+  {id:'corn',e:'🌽',n:'Corn',r:[50,70],l:'50–70%',wd:4,cat:'farm'},
+  {id:'wheat',e:'🌾',n:'Wheat',r:[40,60],l:'40–60%',wd:6,cat:'farm'},
+  {id:'tomato',e:'🍅',n:'Tomatoes',r:[55,75],l:'55–75%',wd:2,cat:'farm'},
+  {id:'seedling',e:'🌱',n:'Seedlings',r:[50,70],l:'50–70%',wd:2,cat:'farm'},
+  {id:'lettuce',e:'🥬',n:'Leafy greens',r:[60,75],l:'60–75%',wd:2,cat:'farm'},
+  {id:'potato',e:'🥔',n:'Root veg',r:[45,65],l:'45–65%',wd:5,cat:'farm'},
+  {id:'beans',e:'🫘',n:'Beans',r:[45,65],l:'45–65%',wd:3,cat:'farm'},
+  {id:'rice',e:'🍚',n:'Rice',r:[75,90],l:'75–90%',wd:1,cat:'farm'},
+  {id:'cotton',e:'🏵️',n:'Cotton',r:[40,60],l:'40–60%',wd:6,cat:'farm'},
+  {id:'succulent',e:'🌵',n:'Succulents',r:[10,30],l:'10–30%',wd:14,cat:'house'},
+  {id:'tropical',e:'🍃',n:'Tropicals',r:[55,70],l:'55–70%',wd:5,cat:'house'},
+  {id:'orchid',e:'🌸',n:'Orchids',r:[40,55],l:'40–55%',wd:7,cat:'house'},
+  {id:'fern',e:'🌿',n:'Ferns',r:[65,80],l:'65–80%',wd:2,cat:'house'},
+  {id:'herbs_pot',e:'🫙',n:'Potted herbs',r:[45,60],l:'45–60%',wd:3,cat:'house'},
+  {id:'tree_in',e:'🌲',n:'Indoor trees',r:[40,55],l:'40–55%',wd:7,cat:'house'},
+  {id:'snake',e:'🪴',n:'Snake plant',r:[20,40],l:'20–40%',wd:14,cat:'house'},
+  {id:'peacelily',e:'💐',n:'Peace lily',r:[60,75],l:'60–75%',wd:3,cat:'house'},
+  {id:'bonsai',e:'🎋',n:'Bonsai',r:[45,65],l:'45–65%',wd:3,cat:'house'},
+];
+const WMO={0:['Clear','☀️'],1:['Mainly clear','🌤'],2:['Partly cloudy','⛅'],3:['Overcast','☁️'],45:['Fog','🌫'],48:['Fog','🌫'],51:['Drizzle','🌦'],53:['Drizzle','🌦'],55:['Drizzle','🌧'],61:['Light rain','🌧'],63:['Rain','🌧'],65:['Heavy rain','⛈'],71:['Snow','🌨'],73:['Snow','❄️'],75:['Snow','❄️'],80:['Showers','🌦'],81:['Showers','🌧'],82:['Showers','⛈'],95:['Thunder','⛈'],96:['Thunder','⛈'],99:['Thunder','⛈']};
+
+// ── Helpers ──
+const SC=s=>({'Very Dry':'#C4661A','Dry':'#C87B00','Optimal':'#2D5016','Moist':'#0F6E56','Wet':'#1565C0','Saturated':'#7B1FA2'}[s]||'#555');
+const SB=s=>({'Very Dry':'#FDF0E6','Dry':'#FEF3E2','Optimal':'#F0F7E8','Moist':'#E0F4F1','Wet':'#E3F2FD','Saturated':'#F3E5F5'}[s]||'#f5f5f5');
+const MC=p=>p<20?'#C4661A':p<40?'#C87B00':p<62?'#3B6912':p<78?'#0F6E56':'#1565C0';
+const fmt=d=>new Date(d).toLocaleDateString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+const fmtD=d=>new Date(d+'T12:00:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+const fmtDS=d=>new Date(d+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'});
+const toISO=d=>new Date(d).toISOString().split('T')[0];
+const addDays=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r};
+const dayStart=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
+const nwd=(cid,st)=>{const c=CROPS.find(x=>x.id===cid);const b=c?c.wd:3;if(st==='Very Dry'||st==='Dry')return 0;if(st==='Saturated')return b+4;if(st==='Wet')return b+2;if(st==='Moist')return b+1;return b;};
+
+// ── Mini Gauge ──
+function MiniGauge({pct,size=80}){
+  const r=size*.42,cx=size/2,cy=size/2+4,circ=Math.PI*r,filled=(pct/100)*circ;
+  return(
+    <svg width={size} height={size*.6} viewBox={`0 0 ${size} ${size*.6}`}>
+      <path d={`M${cx-r} ${cy} A${r} ${r} 0 0 1 ${cx+r} ${cy}`} fill="none" stroke="#E5E2DC" strokeWidth="8" strokeLinecap="round"/>
+      <path d={`M${cx-r} ${cy} A${r} ${r} 0 0 1 ${cx+r} ${cy}`} fill="none" stroke={MC(pct)} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${filled} ${circ}`} style={{transition:'stroke-dasharray 1s ease'}}/>
+      <text x={cx} y={cy+2} textAnchor="middle" style={{fontSize:`${size*.18}px`,fontWeight:'600',fill:'#1C1A17',fontFamily:'DM Sans,sans-serif'}}>{pct}%</text>
+    </svg>
+  );
+}
+
+// ── Full Gauge ──
+function Gauge({pct}){
+  const r=68,cx=110,cy=90,circ=Math.PI*r,filled=(pct/100)*circ;
+  return(
+    <svg width="220" height="108" viewBox="0 0 220 108">
+      <path d={`M${cx-r} ${cy} A${r} ${r} 0 0 1 ${cx+r} ${cy}`} fill="none" stroke="#E5E2DC" strokeWidth="13" strokeLinecap="round"/>
+      <path d={`M${cx-r} ${cy} A${r} ${r} 0 0 1 ${cx+r} ${cy}`} fill="none" stroke={MC(pct)} strokeWidth="13" strokeLinecap="round" strokeDasharray={`${filled} ${circ}`} style={{transition:'stroke-dasharray 1.1s ease'}}/>
+      <text x={cx} y={cy-8} textAnchor="middle" style={{fontSize:'28px',fontWeight:'600',fill:'#1C1A17',fontFamily:'DM Sans,sans-serif'}}>{pct}%</text>
+      <text x={cx} y={cy+12} textAnchor="middle" style={{fontSize:'12px',fill:'#6B6760',fontFamily:'DM Sans,sans-serif'}}>soil moisture</text>
+      <text x={cx-r+2} y={cy+20} style={{fontSize:'10px',fill:'#6B6760',fontFamily:'DM Sans,sans-serif'}}>Dry</text>
+      <text x={cx+r-20} y={cy+20} style={{fontSize:'10px',fill:'#6B6760',fontFamily:'DM Sans,sans-serif'}}>Wet</text>
+    </svg>
+  );
+}
+
+// ── Settings Modal ──
+function Settings({apiKey,onSave,onClose,firstRun}){
+  const [k,setK]=useState(apiKey);
+  return(
+    <div className="overlay" onClick={e=>{if(e.target===e.currentTarget&&!firstRun)onClose();}}>
+      <div className="overlay-card">
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:'1.25rem'}}>
+          <div style={{width:38,height:38,borderRadius:9,background:'#2D5016',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>🌱</div>
+          <div>
+            <div style={{fontFamily:'Playfair Display,serif',fontSize:18,color:'#1C1A17'}}>SoilSense Setup</div>
+            <div style={{fontSize:12,color:'#6B6760'}}>AI soil moisture analyzer</div>
+          </div>
+        </div>
+        <p style={{fontSize:13,color:'#6B6760',lineHeight:1.6,marginBottom:'1rem'}}>
+          SoilSense uses the Anthropic Claude AI to analyze soil photos. Enter your API key below to get started — it's stored locally on your device and never shared.
+        </p>
+        <div style={{marginBottom:'.75rem'}}>
+          <div style={{fontSize:12,fontWeight:500,color:'#6B6760',marginBottom:5}}>Anthropic API Key</div>
+          <input className="inp" type="password" placeholder="sk-ant-api03-..." value={k} onChange={e=>setK(e.target.value)} style={{fontFamily:'monospace'}}/>
+        </div>
+        <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer"
+          style={{display:'block',fontSize:13,color:'#3B6912',marginBottom:'1.1rem',textDecoration:'none'}}>
+          Get a free API key at console.anthropic.com →
+        </a>
+        <div style={{background:'#FEF3E2',border:'1px solid #fcd96a',borderRadius:8,padding:'9px 12px',marginBottom:'1.1rem',fontSize:12,color:'#92680A',lineHeight:1.5}}>
+          ⚠ Keep your API key private. This app calls the Anthropic API directly from your browser. Standard Anthropic usage fees apply per analysis.
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          {!firstRun&&<button className="btn btn-ghost" style={{flex:1}} onClick={onClose}>Cancel</button>}
+          <button className="btn btn-primary" style={{flex:2}} disabled={!k.trim()} onClick={()=>{onSave(k.trim());onClose();}}>
+            {firstRun?'Start analyzing soil →':'Save key'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main App ──
+function App(){
+  const [tab,setTab]=useState('home');
+  const [step,setStep]=useState('setup');
+  const [histView,setHistView]=useState('readings');
+  const [crop,setCrop]=useState(null);
+  const [cropCat,setCropCat]=useState('farm');
+  const [field,setField]=useState('');
+  const [gps,setGps]=useState(null);
+  const [gpsL,setGpsL]=useState(false);
+  const [image,setImage]=useState(null);
+  const [b64,setB64]=useState(null);
+  const [busy,setBusy]=useState(false);
+  const [result,setResult]=useState(null);
+  const [err,setErr]=useState(null);
+  const [cam,setCam]=useState(false);
+  const [hist,setHist]=useState([]);
+  const [sched,setSched]=useState([]);
+  const [loaded,setLoaded]=useState(false);
+  const [showAS,setShowAS]=useState(false);
+  const [sdDate,setSdDate]=useState('');
+  const [sdNote,setSdNote]=useState('');
+  const [selDay,setSelDay]=useState(null);
+  const [wx,setWx]=useState(null);
+  const [wxL,setWxL]=useState(false);
+  const [wxErr,setWxErr]=useState(null);
+  const [wxCoords,setWxCoords]=useState(null);
+  const [notifPerm,setNotifPerm]=useState('default');
+  const [notifMsg,setNotifMsg]=useState('');
+  const [dueBanner,setDueBanner]=useState(null);
+  const [copied,setCopied]=useState(false);
+  const [confirmClear,setConfirmClear]=useState(false);
+  const [apiKey,setApiKey]=useState('');
+  const [showSettings,setShowSettings]=useState(false);
+
+  const fRef=useRef(null);const f2Ref=useRef(null);
+  const vidRef=useRef(null);const canRef=useRef(null);const stRef=useRef(null);
+
+  useEffect(()=>{
+    setNotifPerm(typeof Notification!=='undefined'?Notification.permission:'none');
+    (async()=>{
+      try{const r=await db.get('h');if(r)setHist(JSON.parse(r.value));}catch{}
+      try{const r=await db.get('s');if(r)setSched(JSON.parse(r.value));}catch{}
+      try{const r=await db.get('f');if(r)setField(r.value);}catch{}
+      const k=localStorage.getItem('ss_apikey')||'';
+      setApiKey(k);
+      if(!k)setShowSettings(true);
+      setLoaded(true);
+    })();
+  },[]);
+
+  useEffect(()=>{
+    if(!loaded||!sched.length)return;
+    const now=dayStart();
+    const due=sched.filter(s=>!s.done&&new Date(s.date)<=now);
+    if(due.length)setDueBanner(due);
+  },[loaded]);
+
+  useEffect(()=>()=>stopCam(),[]);
+
+  const stopCam=useCallback(()=>{stRef.current?.getTracks().forEach(t=>t.stop());stRef.current=null;setCam(false);},[]);
+  const saveH=async h=>{setHist(h);try{await db.set('h',JSON.stringify(h));}catch{}};
+  const saveS=async s=>{setSched(s);try{await db.set('s',JSON.stringify(s));}catch{}};
+  const saveF=async v=>{setField(v);try{await db.set('f',v);}catch{}};
+  const saveKey=k=>{setApiKey(k);localStorage.setItem('ss_apikey',k);};
+
+  const handleFile=e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=ev=>{setImage(ev.target.result);setB64(ev.target.result.split(',')[1]);setResult(null);setErr(null);setStep('capture');};
+    r.readAsDataURL(f);stopCam();
+  };
+
+  const startCam=async()=>{
+    setErr(null);
+    try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});stRef.current=s;setCam(true);setStep('capture');setTimeout(()=>{if(vidRef.current)vidRef.current.srcObject=s;},80);}
+    catch{setErr("Camera access denied — please use the upload option instead.");}
+  };
+
+  const capturePhoto=()=>{
+    const v=vidRef.current,c=canRef.current;
+    c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);
+    const url=c.toDataURL('image/jpeg',.85);
+    setImage(url);setB64(url.split(',')[1]);setResult(null);setErr(null);stopCam();
+  };
+
+  const getGPS=()=>{
+    if(!navigator.geolocation){setErr("GPS not available on this device.");return;}
+    setGpsL(true);
+    navigator.geolocation.getCurrentPosition(
+      p=>{setGps({lat:p.coords.latitude.toFixed(5),lng:p.coords.longitude.toFixed(5)});setGpsL(false);},
+      ()=>{setErr("Could not get location — please check GPS permissions.");setGpsL(false);}
+    );
+  };
+
+  const analyze=async()=>{
+    if(!b64)return;
+    if(!apiKey){setShowSettings(true);return;}
+    setBusy(true);setErr(null);
+    const ci=crop?CROPS.find(c=>c.id===crop):null;
+    try{
+      const res=await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          "x-api-key":apiKey,
+          "anthropic-version":"2023-06-01",
+          "anthropic-dangerous-direct-browser-access":"true"
+        },
+        body:JSON.stringify({
+          model:"claude-sonnet-4-20250514",max_tokens:1000,
+          system:`You are an expert in agricultural and indoor plant soil care. Analyze the soil image.${ci?` Plant: ${ci.n} (${ci.cat==='house'?'houseplant':'farm crop'}). Optimal moisture: ${ci.l}.`:'\''} Respond ONLY with valid JSON, no markdown: {"moisture_percent":<0-100>,"status":"Very Dry"|"Dry"|"Optimal"|"Moist"|"Wet"|"Saturated","seedling_ready":true|false,"watering_needed":true|false,"seedling_rec":"<one sentence: for houseplants advise on repotting or plant health; for farm crops advise on planting seedlings>","watering_rec":"<one clear watering sentence tailored to the plant type and moisture level>","tip":"<one practical care tip for ${ci?ci.n:'this plant'} at this moisture level>"," confidence":"Low"|"Medium"|"High","visual_cue":"<brief visual description>"}`,
+          messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},{type:"text",text:"Analyze soil moisture."}]}]
+        })
+      });
+      if(res.status===401){setErr("Invalid API key. Tap ⚙ to update your key.");setBusy(false);return;}
+      const data=await res.json();
+      if(data.error){setErr("API error: "+data.error.message);setBusy(false);return;}
+      const txt=data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim();
+      const p=JSON.parse(txt);setResult(p);
+      const days=ci?nwd(crop,p.status):3;
+      setSdDate(toISO(addDays(new Date(),days)));
+      setSdNote(`${ci?ci.n+' — ':''}${p.status.toLowerCase()}${field?' ('+field+')':''}`);
+      const e={id:Date.now(),date:new Date().toISOString(),crop,cropInfo:ci,fieldName:field||null,coords:gps||null,image,result:p};
+      await saveH([e,...hist].slice(0,50));setStep('results');
+    }catch(ex){setErr("Analysis failed — check your API key and connection.");}
+    setBusy(false);
+  };
+
+  const addSched=async()=>{
+    if(!sdDate)return;const ci=crop?CROPS.find(c=>c.id===crop):null;
+    const it={id:Date.now(),date:sdDate,crop,cropInfo:ci,fieldName:field||null,notes:sdNote,done:false};
+    await saveS([...sched,it].sort((a,b)=>new Date(a.date)-new Date(b.date)));setShowAS(false);
+    if(notifPerm==='granted'&&sdDate===toISO(new Date()))
+      try{new Notification('SoilSense 🌱',{body:`Watering reminder${it.fieldName?' for '+it.fieldName:''}!`});}catch{}
+  };
+
+  const toggleDone=async id=>saveS(sched.map(s=>s.id===id?{...s,done:!s.done}:s));
+  const delSched=async id=>saveS(sched.filter(s=>s.id!==id));
+
+  const fetchWx=async(lat,lng)=>{
+    setWxL(true);setWxErr(null);
+    try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,rain_sum&timezone=auto&past_days=3&forecast_days=7`);setWx(await r.json());}
+    catch{setWxErr("Could not load weather data.");}
+    setWxL(false);
+  };
+
+  const reqWxLoc=()=>{
+    if(!navigator.geolocation){setWxErr("Geolocation not available.");return;}
+    setWxL(true);
+    navigator.geolocation.getCurrentPosition(
+      p=>{const{latitude:lat,longitude:lng}=p.coords;setWxCoords({lat,lng});fetchWx(lat,lng);},
+      ()=>{setWxErr("Location access denied.");setWxL(false);}
+    );
+  };
+
+  const reqNotif=async()=>{
+    if(typeof Notification==='undefined'){setNotifMsg("Notifications not supported in this browser.");return;}
+    try{
+      const p=await Notification.requestPermission();setNotifPerm(p);
+      if(p==='granted'){
+        const due=sched.filter(s=>!s.done&&new Date(s.date)<=dayStart());
+        if(due.length){due.forEach(it=>{try{new Notification('SoilSense 🌱',{body:`Watering due${it.fieldName?' for '+it.fieldName:''}!`});}catch{}});setNotifMsg(`Sent ${due.length} reminder${due.length>1?'s':''}.`);}
+        else setNotifMsg("Reminders enabled! You'll be notified when events come due.");
+      }else setNotifMsg("Permission denied. Enable notifications in your browser settings.");
+    }catch{setNotifMsg("Notifications aren't available here.");}
+  };
+
+  const cropFit=r=>{
+    if(!crop||!r)return null;const c=CROPS.find(x=>x.id===crop);if(!c)return null;
+    const[lo,hi]=c.r;
+    if(r.moisture_percent>=lo&&r.moisture_percent<=hi)return'ideal';
+    if(Math.abs(r.moisture_percent-lo)<=8||Math.abs(r.moisture_percent-hi)<=8)return'close';
+    return'off';
+  };
+
+  const makeReport=()=>{
+    if(!result)return'';const ci=crop?CROPS.find(x=>x.id===crop):null;
+    const fit=cropFit(result);
+    const ft={ideal:`IDEAL for ${ci?.n}`,close:`BORDERLINE for ${ci?.n}`,off:`OUT OF RANGE for ${ci?.n}`}[fit]||'';
+    return `SOILSENSE MOISTURE REPORT\nGenerated: ${new Date().toLocaleString()}\n${'─'.repeat(40)}\nField:      ${field||'Not specified'}\nGPS:        ${gps?gps.lat+', '+gps.lng:'Not tagged'}\nCrop:       ${ci?ci.n:'Not specified'}\nMoisture:   ${result.moisture_percent}%\nStatus:     ${result.status}\n${ci?`Optimal:    ${ci.l}\nCrop fit:   ${ft}\n`:''}Confidence: ${result.confidence}\nVisual cue: ${result.visual_cue}\n${'─'.repeat(40)}\nPLANTING SEEDLINGS\n${result.seedling_rec}\n\nWATERING YOUNG PLANTS\n${result.watering_rec}\n\nFARMER TIP\n${result.tip}\n${'─'.repeat(40)}\nSoilSense AI — soilsense.app`;
+  };
+
+  const copyRep=async()=>{try{await navigator.clipboard.writeText(makeReport());setCopied(true);setTimeout(()=>setCopied(false),2000);}catch{}};
+  const reset=()=>{setStep('setup');setImage(null);setB64(null);setResult(null);setErr(null);setShowAS(false);stopCam();};
+
+  const fields=useMemo(()=>{
+    const g={};hist.forEach(h=>{const k=h.fieldName||'(Untagged)';if(!g[k])g[k]={name:k,coords:h.coords,readings:[]};g[k].readings.push(h);});
+    return Object.values(g).sort((a,b)=>new Date(b.readings[0].date)-new Date(a.readings[0].date));
+  },[hist]);
+
+  const pending=useMemo(()=>sched.filter(s=>!s.done),[sched]);
+  const overdue=useMemo(()=>{const n=dayStart();return sched.filter(s=>!s.done&&new Date(s.date)<n);},[sched]);
+
+  // ── HOME ──
+  const Home=()=>{
+    const last=hist[0];
+    const upcoming=pending.sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,3);
+    const wmo=c=>WMO[c]||['','🌡'];
+    return(<>
+      {last?(
+        <div className="card">
+          <div className="card-label">Last reading</div>
+          <div style={{display:'flex',alignItems:'center',gap:14}}>
+            <MiniGauge pct={last.result.moisture_percent} size={92}/>
+            <div style={{flex:1}}>
+              <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:5}}>
+                <span style={{fontSize:17,fontWeight:600,color:MC(last.result.moisture_percent)}}>{last.result.moisture_percent}%</span>
+                <span className="badge" style={{background:SB(last.result.status),color:SC(last.result.status)}}>{last.result.status}</span>
+              </div>
+              {last.fieldName&&<div style={{fontSize:13,color:'#6B6760',marginBottom:3}}>📍 {last.fieldName}</div>}
+              {last.cropInfo&&<div style={{fontSize:12,color:'#6B6760',marginBottom:3}}>{last.cropInfo.e} {last.cropInfo.n}</div>}
+              <div style={{fontSize:11,color:'#9A9690'}}>{fmt(last.date)}</div>
+            </div>
+          </div>
+          <button className="btn btn-secondary btn-full" style={{marginTop:12}} onClick={()=>{reset();setTab('analyze');}}>🔬 New reading</button>
+        </div>
+      ):(
+        <div className="card" style={{textAlign:'center',padding:'1.8rem 1.2rem',background:'#F0F7E8',borderColor:'#c8e4a0'}}>
+          <div style={{fontSize:44,marginBottom:10}}>🌱</div>
+          <div style={{fontFamily:'Playfair Display,serif',fontSize:20,color:'#2D5016',marginBottom:6}}>Welcome to SoilSense</div>
+          <div style={{fontSize:13,color:'#6B6760',marginBottom:16,lineHeight:1.6}}>Point your camera at bare soil to get an instant AI moisture reading and personalized planting advice for your crops.</div>
+          <button className="btn btn-primary btn-full" onClick={()=>{reset();setTab('analyze');}}>📸 Take your first reading</button>
+        </div>
+      )}
+
+      <div className="metrics">
+        {[{v:hist.length,l:'Readings',c:'#1C1A17'},{v:fields.length,l:'Fields',c:'#1C1A17'},{v:pending.length,l:'Upcoming',c:pending.length?'#3B6912':'#1C1A17'},{v:overdue.length,l:'Overdue',c:overdue.length?'#B91C1C':'#1C1A17'}].map(m=>(
+          <div key={m.l} className="metric"><div className="metric-val" style={{color:m.c}}>{m.v}</div><div className="metric-lbl">{m.l}</div></div>
+        ))}
+      </div>
+
+      {upcoming.length>0&&(
+        <div className="card">
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:9}}>
+            <span className="card-label" style={{margin:0}}>Upcoming waterings</span>
+            <button className="btn btn-ghost" style={{padding:'4px 10px',fontSize:12}} onClick={()=>setTab('schedule')}>All →</button>
+          </div>
+          {upcoming.map((it,i)=>{
+            const now=dayStart();const d=new Date(it.date);const diff=Math.round((d-now)/864e5);
+            const lbl=diff<0?`${Math.abs(diff)}d overdue`:diff===0?'Today':diff===1?'Tomorrow':`In ${diff}d`;
+            const ov=diff<0;
+            return(
+              <div key={it.id} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 0',borderBottom:i<upcoming.length-1?'1px solid #F1EDE6':'none'}}>
+                <div style={{width:34,height:34,borderRadius:8,background:ov?'#FFF5F5':'#F0F7E8',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>{ov?'⚠️':'💧'}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:500,color:'#1C1A17'}}>{fmtD(it.date)}</div>
+                  <div style={{fontSize:11,color:'#6B6760'}}>{it.notes||it.fieldName||'Watering event'}</div>
+                </div>
+                <span style={{fontSize:12,fontWeight:500,color:ov?'#B91C1C':diff===0?'#3B6912':'#6B6760',flexShrink:0}}>{lbl}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {hist.length>0&&(
+        <div className="card">
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:9}}>
+            <span className="card-label" style={{margin:0}}>Recent readings</span>
+            <button className="btn btn-ghost" style={{padding:'4px 10px',fontSize:12}} onClick={()=>setTab('history')}>All →</button>
+          </div>
+          {hist.slice(0,3).map((h,i)=>(
+            <div key={h.id} className="reading-row" style={{borderBottom:i<2&&i<hist.slice(0,3).length-1?'1px solid #F1EDE6':'none'}}>
+              {h.image?<img src={h.image} className="reading-thumb" alt=""/>:<div className="reading-placeholder">{h.cropInfo?h.cropInfo.e:'🌱'}</div>}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:4}}>
+                  <span style={{fontWeight:600,fontSize:14,color:MC(h.result.moisture_percent)}}>{h.result.moisture_percent}%</span>
+                  <span className="badge" style={{background:SB(h.result.status),color:SC(h.result.status)}}>{h.result.status}</span>
+                </div>
+                <div className="mini-bar-bg"><div style={{height:5,borderRadius:3,width:`${h.result.moisture_percent}%`,background:MC(h.result.moisture_percent)}}/></div>
+                <div style={{fontSize:11,color:'#9A9690',display:'flex',gap:8}}><span>{fmt(h.date)}</span>{h.fieldName&&<span>📍 {h.fieldName}</span>}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {wx&&(()=>{const cur=wx.current;return(
+        <div className="card" style={{cursor:'pointer'}} onClick={()=>setTab('weather')}>
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <div style={{fontSize:32}}>{wmo(cur.weather_code)[1]}</div>
+            <div><div style={{fontSize:15,fontWeight:500,color:'#1C1A17'}}>{Math.round(cur.temperature_2m)}° · {wmo(cur.weather_code)[0]}</div><div style={{fontSize:12,color:'#6B6760'}}>Humidity {cur.relative_humidity_2m}%</div></div>
+            <span style={{marginLeft:'auto',fontSize:12,color:'#3B6912',fontWeight:500}}>Weather →</span>
+          </div>
+        </div>
+      );})()}
+      {!wx&&<div style={{textAlign:'center',marginBottom:'.8rem'}}><button className="btn btn-ghost" style={{fontSize:13}} onClick={()=>setTab('weather')}>🌤 Enable weather forecast →</button></div>}
+    </>);
+  };
+
+  // ── ANALYZE ──
+  const stepIdx={'setup':0,'capture':1,'results':2,'report':3}[step]||0;
+  const Analyze=()=>{
+    if(step==='report'&&result)return(
+      <div className="card">
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}><span style={{fontSize:20}}>📋</span><span style={{fontWeight:600,fontSize:16,color:'#1C1A17'}}>Moisture report</span></div>
+        <pre style={{background:'#F8F5F0',borderRadius:10,padding:13,fontSize:11,fontFamily:'monospace',color:'#1C1A17',whiteSpace:'pre-wrap',lineHeight:1.6,maxHeight:260,overflowY:'auto',marginBottom:12}}>{makeReport()}</pre>
+        <div style={{display:'flex',gap:8}}>
+          <button className="btn btn-ghost" style={{flex:1}} onClick={copyRep}>{copied?'✓ Copied!':'📋 Copy'}</button>
+          <button className="btn btn-ghost" style={{flex:1}} onClick={()=>{const t=makeReport();navigator.share?navigator.share({title:'SoilSense Report',text:t}):copyRep();}}>📤 Share</button>
+          <button className="btn btn-secondary" style={{flex:1}} onClick={()=>setStep('results')}>← Back</button>
+        </div>
+      </div>
+    );
+    return(<>
+      <div style={{margin:'0 0 1.1rem'}}>
+        <div style={{display:'flex',alignItems:'center'}}>
+          {['Setup','Capture','Results'].map((lbl,i)=>(
+            <React.Fragment key={lbl}>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'center'}}>
+                <div className={`step-dot${i<stepIdx?' done':i===stepIdx?' active':''}`}>{i<stepIdx?'✓':i+1}</div>
+                <div className={`step-lbl${i===stepIdx?' active':''}`}>{lbl}</div>
+              </div>
+              {i<2&&<div className={`step-line${i<stepIdx?' done':''}`}/>}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+
+      {(step==='setup'||step==='capture')&&(<>
+        <div className="card">
+          <div className="card-label">Plant type <span style={{fontWeight:400,textTransform:'none',letterSpacing:0,color:'#bbb'}}>(optional)</span></div>
+          <div style={{display:'flex',gap:0,background:'#F8F5F0',borderRadius:9,padding:3,marginBottom:10,border:'1px solid #E5E2DC'}}>
+            {[['farm','🌾 Farm crops'],['house','🪴 Houseplants']].map(([v,l])=>(
+              <button key={v} onClick={()=>{setCropCat(v);setCrop(null);}} style={{flex:1,padding:'7px',textAlign:'center',borderRadius:7,border:'none',cursor:'pointer',fontFamily:'DM Sans,sans-serif',fontSize:13,fontWeight:cropCat===v?500:400,background:cropCat===v?'#fff':'transparent',color:cropCat===v?'#3B6912':'#6B6760',transition:'all .15s',boxShadow:cropCat===v?'0 1px 3px rgba(0,0,0,.08)':'none'}}>{l}</button>
+            ))}
+          </div>
+          <div className="crop-grid">
+            {CROPS.filter(c=>c.cat===cropCat).map(c=>(
+              <button key={c.id} className={'crop-btn'+(crop===c.id?' sel':'')} onClick={()=>setCrop(crop===c.id?null:c.id)}>
+                <span style={{fontSize:21,display:'block',marginBottom:3,lineHeight:1}}>{c.e}</span>
+                <div style={{fontSize:12,fontWeight:500,color:'#1C1A17',lineHeight:1.2}}>{c.n}</div>
+                <div style={{fontSize:10,color:'#6B6760',marginTop:1}}>{c.l}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="card" style={{padding:'1rem'}}>
+          <div className="card-label">Field tag <span style={{fontWeight:400,textTransform:'none',letterSpacing:0,color:'#bbb'}}>(optional)</span></div>
+          <div style={{display:'flex',gap:8}}>
+            <input className="inp" type="text" placeholder="Field name (e.g. North plot)" value={field} onChange={e=>saveF(e.target.value)}/>
+            <button className="btn btn-ghost" style={{padding:'9px 12px',flexShrink:0}} onClick={getGPS} disabled={gpsL}>{gpsL?'…':'📍'}</button>
+          </div>
+          {gps&&<div style={{fontSize:12,color:'#3B6912',marginTop:6}}>📍 {gps.lat}, {gps.lng}</div>}
+        </div>
+      </>)}
+
+      {!cam&&!image&&(<>
+        <div className="upload-zone" onClick={()=>fRef.current.click()}>
+          <div style={{fontSize:36,marginBottom:8}}>📸</div>
+          <div style={{fontWeight:500,color:'#1C1A17',marginBottom:4}}>Upload a soil photo</div>
+          <div style={{fontSize:13,color:'#6B6760'}}>30–60 cm from bare soil · good natural lighting</div>
+          <input ref={fRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleFile}/>
+        </div>
+        <div style={{display:'flex',gap:8,marginTop:'.75rem'}}>
+          <button className="btn btn-ghost" style={{flex:1}} onClick={()=>f2Ref.current.click()}>
+            📁 Upload photo
+            <input ref={f2Ref} type="file" accept="image/*" style={{display:'none'}} onChange={handleFile}/>
+          </button>
+          <button className="btn" style={{flex:1,background:'#2c4a1a',color:'#d4edaa',border:'none'}} onClick={startCam}>📷 Use camera</button>
+        </div>
+      </>)}
+
+      {cam&&(
+        <div className="card" style={{padding:0,overflow:'hidden'}}>
+          <video ref={vidRef} autoPlay playsInline muted/>
+          <canvas ref={canRef}/>
+          <div style={{display:'flex',gap:8,padding:'.75rem'}}>
+            <button className="btn btn-ghost" style={{flexShrink:0}} onClick={stopCam}>✕ Cancel</button>
+            <button className="btn btn-primary" style={{flex:1}} onClick={capturePhoto}>📸 Capture soil</button>
+          </div>
+        </div>
+      )}
+
+      {image&&!cam&&(
+        <div className="card" style={{padding:0,overflow:'hidden'}}>
+          <img src={image} style={{width:'100%',maxHeight:240,objectFit:'cover',display:'block'}} alt="Soil sample"/>
+          <div style={{display:'flex',gap:8,padding:'.75rem'}}>
+            <button className="btn btn-ghost" style={{flexShrink:0}} onClick={reset}>🔄 Retake</button>
+            <button className="btn btn-primary" style={{flex:1}} onClick={analyze} disabled={busy}>
+              {busy?<><div className="spinner"/>Analyzing soil...</>:'🔬 Analyze moisture'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {err&&<div className="err-box">{err}</div>}
+
+      {result&&step==='results'&&(<>
+        <div className="card">
+          {(()=>{
+            const fit=cropFit(result);const ci=crop?CROPS.find(x=>x.id===crop):null;
+            const fm={ideal:{bg:'#E8F5E3',c:'#2d6012',t:`✓ Ideal for ${ci?.n}`},close:{bg:'#FFF3E0',c:'#a05e00',t:`⚠ Borderline (optimal ${ci?.l})`},off:{bg:'#FFF5F5',c:'#B91C1C',t:`✗ Out of range (optimal ${ci?.l})`}};
+            return ci&&fit&&<div style={{marginBottom:10}}><span className="badge" style={{background:fm[fit].bg,color:fm[fit].c}}>{fm[fit].t}</span></div>;
+          })()}
+          <div style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'.4rem 0 .6rem'}}>
+            <Gauge pct={result.moisture_percent}/>
+            <span className="badge" style={{background:SB(result.status),color:SC(result.status),marginTop:5,padding:'4px 16px',fontSize:13,fontWeight:500}}>{result.status}</span>
+          </div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:7,flexWrap:'wrap',marginTop:8}}>
+            {field&&<span className="stat-pill">📍 {field}</span>}
+            {gps&&<span className="stat-pill">🗺 {gps.lat}, {gps.lng}</span>}
+            <span className="stat-pill" style={{color:{Low:'#C87B00',Medium:'#3B6912',High:'#0F6E56'}[result.confidence]||'#888'}}>{result.confidence} confidence</span>
+          </div>
+          <div style={{fontSize:12,color:'#6B6760',textAlign:'center',marginTop:6,lineHeight:1.4}}>{result.visual_cue}</div>
+        </div>
+
+        <div className="card">
+          <div className="card-label">Recommendations</div>
+          {[{icon:result.seedling_ready?'✅':'⏸️',bg:result.seedling_ready?'#F0F7E8':'#FFF5F0',lbl:'Planting seedlings',txt:result.seedling_rec},{icon:result.watering_needed?'💧':'🚫',bg:result.watering_needed?'#E3F2FD':'#F0F7E8',lbl:'Watering young plants',txt:result.watering_rec}].map((r,i)=>(
+            <div key={i} style={{display:'flex',gap:11,padding:'10px 0',borderBottom:i===0?'1px solid #F1EDE6':'none'}}>
+              <div style={{width:36,height:36,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,background:r.bg,flexShrink:0}}>{r.icon}</div>
+              <div>
+                <div style={{fontSize:11,color:'#6B6760',margin:'2px 0',textTransform:'uppercase',letterSpacing:'.06em'}}>{r.lbl}</div>
+                <div style={{fontSize:13,color:'#1C1A17',lineHeight:1.5}}>{r.txt}</div>
+              </div>
+            </div>
+          ))}
+          <div className="tip-box">
+            <div style={{fontSize:12,color:'#2D5016',fontWeight:500,marginBottom:3}}>💡 Farmer tip</div>
+            <div style={{fontSize:13,color:'#2d5410',lineHeight:1.5}}>{result.tip}</div>
+          </div>
+        </div>
+
+        {!showAS
+          ?<div style={{display:'flex',gap:7,marginBottom:'.9rem'}}>
+              <button className="btn btn-ghost" style={{flex:1}} onClick={reset}>📷 New</button>
+              <button className="btn btn-ghost" style={{flex:1}} onClick={()=>setShowAS(true)}>📅 Schedule</button>
+              <button className="btn" style={{flex:1,background:'#2c4a1a',color:'#d4edaa',border:'none'}} onClick={()=>setStep('report')}>📋 Report</button>
+            </div>
+          :<div className="card">
+              <div style={{fontWeight:500,color:'#1C1A17',marginBottom:10}}>📅 Schedule next watering</div>
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                <input type="date" className="inp" value={sdDate} onChange={e=>setSdDate(e.target.value)}/>
+                <input type="text" className="inp" placeholder="Notes (optional)" value={sdNote} onChange={e=>setSdNote(e.target.value)}/>
+                <div style={{display:'flex',gap:8}}>
+                  <button className="btn btn-ghost" style={{flex:1}} onClick={()=>setShowAS(false)}>Cancel</button>
+                  <button className="btn btn-primary" style={{flex:1}} onClick={addSched}>Save to schedule</button>
+                </div>
+              </div>
+            </div>
+        }
+      </>)}
+    </>);
+  };
+
+  // ── SCHEDULE ──
+  const Schedule=()=>{
+    const now=dayStart();const today=new Date();
+    const startOfWeek=new Date(today);startOfWeek.setDate(today.getDate()-today.getDay());
+    const week=Array.from({length:7},(_,i)=>{const d=new Date(startOfWeek);d.setDate(startOfWeek.getDate()+i);return d;});
+    const byDay=d=>sched.filter(s=>new Date(s.date).toDateString()===d.toDateString());
+    const filtered=selDay?sched.filter(s=>new Date(s.date).toDateString()===selDay.toDateString()):sched;
+    const overdueF=filtered.filter(s=>!s.done&&new Date(s.date)<now);
+    const pendingF=filtered.filter(s=>!s.done&&new Date(s.date)>=now).sort((a,b)=>new Date(a.date)-new Date(b.date));
+    const doneF=filtered.filter(s=>s.done).sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+    const SI=({item,ov})=>{
+      const d=new Date(item.date);const diff=Math.round((d-now)/864e5);
+      const lbl=ov?`${Math.abs(diff)}d overdue`:diff===0?'Today':diff===1?'Tomorrow':`In ${diff}d`;
+      const lc=ov?'#B91C1C':diff===0?'#3B6912':diff<=2?'#C87B00':'#6B6760';
+      return(
+        <div style={{display:'flex',alignItems:'flex-start',gap:9,padding:'10px 0',borderBottom:'1px solid #F1EDE6'}}>
+          <button className={'scheck'+(item.done?' done':'')} style={{border:`1.5px solid ${ov?'#fca5a5':'rgba(0,0,0,.15)'}`,marginTop:2}} onClick={()=>toggleDone(item.id)}>{item.done?'✓':''}</button>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+              <span style={{fontSize:13,fontWeight:500,color:'#1C1A17'}}>{fmtD(item.date)}</span>
+              <span style={{fontSize:11,fontWeight:500,color:lc}}>{lbl}</span>
+              {item.cropInfo&&<span style={{fontSize:11,color:'#6B6760'}}>{item.cropInfo.e} {item.cropInfo.n}</span>}
+            </div>
+            {item.notes&&<div style={{fontSize:12,color:'#6B6760',marginTop:2}}>{item.notes}</div>}
+            {item.fieldName&&<div style={{fontSize:12,color:'#6B6760'}}>📍 {item.fieldName}</div>}
+          </div>
+          <button onClick={()=>delSched(item.id)} style={{border:'none',background:'transparent',cursor:'pointer',color:'#9A9690',fontSize:18,padding:'0 2px',lineHeight:1}}>×</button>
+        </div>
+      );
+    };
+
+    return(<>
+      <div className="card" style={{padding:'1rem'}}>
+        <div className="card-label">🔔 Reminders</div>
+        {notifPerm==='granted'
+          ?<div style={{display:'flex',alignItems:'center',gap:8}}><span style={{width:8,height:8,borderRadius:'50%',background:'#3B6912',display:'inline-block'}}/><span style={{fontSize:13,color:'#3B6912',fontWeight:500}}>Browser reminders enabled</span></div>
+          :<div style={{fontSize:13,color:'#6B6760',marginBottom:8,lineHeight:1.5}}>Receive browser notifications when watering events come due.</div>}
+        <div style={{marginTop:8}}>
+          <button className="btn btn-secondary btn-full" style={{fontSize:13}} onClick={reqNotif}>{notifPerm==='granted'?'📬 Send test notification':'🔔 Enable reminders'}</button>
+        </div>
+        {notifMsg&&<div style={{fontSize:12,color:'#6B6760',marginTop:8,lineHeight:1.4}}>{notifMsg}</div>}
+        <div style={{fontSize:11,color:'#9A9690',marginTop:8,lineHeight:1.4,borderTop:'1px solid #F1EDE6',paddingTop:8}}>Notifications require this browser window to be open. For persistent reminders, save events to your phone's calendar.</div>
+      </div>
+
+      <div className="card">
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+          <div className="card-label" style={{margin:0}}>This week</div>
+          {selDay&&<button className="btn btn-ghost" style={{padding:'3px 10px',fontSize:12}} onClick={()=>setSelDay(null)}>Show all</button>}
+        </div>
+        <div className="week">
+          {week.map(d=>{
+            const evs=byDay(d);const hasEv=evs.some(e=>!e.done);const hasOv=evs.some(e=>!e.done&&new Date(e.date)<now);
+            const isToday=d.toDateString()===today.toDateString();const isSel=selDay&&selDay.toDateString()===d.toDateString();
+            return(
+              <div key={d.toString()} className={'wday'+(isToday?' today':'')+(isSel?' selected':'')} onClick={()=>setSelDay(isSel?null:d)}>
+                <div className="wday-name">{d.toLocaleDateString(undefined,{weekday:'short'}).charAt(0)}</div>
+                <div className="wday-num" style={{color:isToday?'#3B6912':'#1C1A17',fontWeight:isToday?600:400}}>{d.getDate()}</div>
+                <div className={'wday-dot'+(hasOv?' overdue':hasEv?' has':'')}/>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'.75rem'}}>
+        <div style={{fontSize:13,color:'#6B6760'}}>{selDay?`${byDay(selDay).length} event${byDay(selDay).length!==1?'s':''} on ${fmtDS(toISO(selDay))}`:sched.length+' total event'+(sched.length!==1?'s':'')}</div>
+        <button className="btn btn-secondary" style={{padding:'7px 13px',fontSize:13}} onClick={()=>{setSdDate(toISO(new Date()));setSdNote('');setShowAS(v=>!v);}}>+ Add</button>
+      </div>
+
+      {showAS&&(
+        <div className="card">
+          <div style={{fontWeight:500,color:'#1C1A17',marginBottom:10}}>Add watering event</div>
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            <input type="date" className="inp" value={sdDate} onChange={e=>setSdDate(e.target.value)}/>
+            <input type="text" className="inp" placeholder="Notes (field, crop…)" value={sdNote} onChange={e=>setSdNote(e.target.value)}/>
+            <div style={{display:'flex',gap:8}}>
+              <button className="btn btn-ghost" style={{flex:1}} onClick={()=>setShowAS(false)}>Cancel</button>
+              <button className="btn btn-primary" style={{flex:1}} onClick={async()=>{const it={id:Date.now(),date:sdDate,crop:null,cropInfo:null,fieldName:field||null,notes:sdNote,done:false};await saveS([...sched,it].sort((a,b)=>new Date(a.date)-new Date(b.date)));setShowAS(false);setSdNote('');}}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!sched.length&&!showAS&&<div className="empty"><div className="empty-icon">📅</div><div className="empty-title">No events yet</div><div className="empty-sub">Tap "📅 Schedule" after an analysis, or "+ Add" above to create one manually.</div></div>}
+      {overdueF.length>0&&<div className="card" style={{padding:'0 1.1rem',borderColor:'#fca5a5'}}><div style={{fontSize:11,fontWeight:500,color:'#B91C1C',textTransform:'uppercase',letterSpacing:'.07em',padding:'10px 0 4px'}}>⚠ Overdue ({overdueF.length})</div>{overdueF.map(i=><SI key={i.id} item={i} ov={true}/>)}</div>}
+      {pendingF.length>0&&<div className="card" style={{padding:'0 1.1rem'}}><div style={{fontSize:11,fontWeight:500,color:'#6B6760',textTransform:'uppercase',letterSpacing:'.07em',padding:'10px 0 4px'}}>Upcoming</div>{pendingF.map(i=><SI key={i.id} item={i} ov={false}/>)}</div>}
+      {doneF.length>0&&<div className="card" style={{padding:'0 1.1rem',opacity:.65}}><div style={{fontSize:11,fontWeight:500,color:'#6B6760',textTransform:'uppercase',letterSpacing:'.07em',padding:'10px 0 4px'}}>Completed</div>{doneF.slice(0,5).map(i=>(
+        <div key={i.id} style={{display:'flex',alignItems:'center',gap:9,padding:'9px 0',borderBottom:'1px solid #F1EDE6'}}>
+          <div className="scheck done">✓</div>
+          <div style={{flex:1}}><span style={{fontSize:13,color:'#6B6760',textDecoration:'line-through'}}>{fmtD(i.date)}</span>{i.notes&&<span style={{fontSize:12,color:'#6B6760',marginLeft:8}}>{i.notes}</span>}</div>
+          <button onClick={()=>delSched(i.id)} style={{border:'none',background:'transparent',cursor:'pointer',color:'#9A9690',fontSize:18,padding:'0 2px'}}>×</button>
+        </div>
+      ))}</div>}
+    </>);
+  };
+
+  // ── HISTORY ──
+  const History=()=>{
+    if(!loaded)return<div style={{textAlign:'center',padding:'2rem',color:'#6B6760'}}>Loading…</div>;
+    const Readings=()=>{
+      if(!hist.length)return<div className="empty"><div className="empty-icon">📊</div><div className="empty-title">No readings yet</div><div className="empty-sub">Analyze your first soil sample to start building a history log.</div></div>;
+      const recent=hist.slice(0,10).reverse();const avg=Math.round(recent.reduce((s,h)=>s+h.result.moisture_percent,0)/recent.length);
+      return(<>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'.75rem'}}>
+          <div style={{fontSize:13,color:'#6B6760'}}>{hist.length} reading{hist.length!==1?'s':''}</div>
+          {!confirmClear
+            ?<button className="btn btn-ghost" style={{padding:'5px 11px',fontSize:12}} onClick={()=>setConfirmClear(true)}>🗑 Clear all</button>
+            :<div style={{display:'flex',gap:6}}><button className="btn btn-ghost" style={{padding:'5px 10px',fontSize:12}} onClick={()=>setConfirmClear(false)}>Cancel</button><button className="btn btn-danger" style={{padding:'5px 10px',fontSize:12}} onClick={()=>{saveH([]);setConfirmClear(false);}}>Confirm</button></div>}
+        </div>
+        {hist.length>=2&&(
+          <div className="card">
+            <div className="card-label">Moisture trend (last {recent.length})</div>
+            <div style={{display:'flex',gap:3,alignItems:'flex-end',height:52,marginBottom:6}}>
+              {recent.map((h,i)=><div key={i} title={`${h.result.moisture_percent}%`} style={{flex:1,background:MC(h.result.moisture_percent),borderRadius:'3px 3px 0 0',height:`${h.result.moisture_percent*.52}%`,minHeight:3}}/>)}
+            </div>
+            <div style={{fontSize:12,color:'#6B6760'}}>Average: <strong style={{color:'#1C1A17'}}>{avg}%</strong></div>
+          </div>
+        )}
+        <div className="card" style={{padding:'0 1.1rem'}}>
+          {hist.map((h,i)=>(
+            <div key={h.id} className="reading-row" style={{borderBottom:i<hist.length-1?'1px solid #F1EDE6':'none'}}>
+              {h.image?<img src={h.image} className="reading-thumb" alt=""/>:<div className="reading-placeholder">{h.cropInfo?h.cropInfo.e:'🌱'}</div>}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:4,flexWrap:'wrap'}}>
+                  <span style={{fontWeight:600,fontSize:14,color:MC(h.result.moisture_percent)}}>{h.result.moisture_percent}%</span>
+                  <span className="badge" style={{background:SB(h.result.status),color:SC(h.result.status)}}>{h.result.status}</span>
+                  {h.cropInfo&&<span style={{fontSize:11,color:'#6B6760'}}>{h.cropInfo.e} {h.cropInfo.n}</span>}
+                </div>
+                <div className="mini-bar-bg"><div style={{height:5,borderRadius:3,width:`${h.result.moisture_percent}%`,background:MC(h.result.moisture_percent)}}/></div>
+                <div style={{fontSize:11,color:'#9A9690',display:'flex',gap:8,flexWrap:'wrap'}}>
+                  <span>{fmt(h.date)}</span>
+                  {h.fieldName&&<span>📍 {h.fieldName}</span>}
+                  {h.coords&&<span>🗺 {h.coords.lat}</span>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </>);
+    };
+    const Fields=()=>{
+      if(!fields.length)return<div className="empty"><div className="empty-icon">🗺</div><div className="empty-title">No fields tagged yet</div><div className="empty-sub">Add a field name when analyzing soil to compare readings across multiple plots.</div></div>;
+      return(<>
+        <div style={{fontSize:13,color:'#6B6760',marginBottom:'.75rem'}}>{fields.length} field{fields.length!==1?'s':''} · {hist.length} total readings</div>
+        {fields.map(f=>{
+          const sorted=[...f.readings].sort((a,b)=>new Date(b.date)-new Date(a.date));
+          const latest=sorted[0];const prev=sorted[1];
+          const trend=prev?latest.result.moisture_percent-prev.result.moisture_percent:null;
+          const avg2=Math.round(sorted.reduce((s,r)=>s+r.result.moisture_percent,0)/sorted.length);
+          const crops2=[...new Set(sorted.filter(r=>r.cropInfo).map(r=>r.cropInfo.e+' '+r.cropInfo.n))];
+          const ti=trend===null?'—':trend>3?'↑ Rising':trend<-3?'↓ Falling':'→ Stable';
+          const tc=trend===null?'#6B6760':trend>3?'#1565C0':trend<-3?'#C87B00':'#3B6912';
+          return(
+            <div key={f.name} className="card field-card">
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+                <div>
+                  <div style={{fontWeight:600,fontSize:15,color:'#1C1A17'}}>📍 {f.name}</div>
+                  {f.coords&&<div style={{fontSize:11,color:'#6B6760',marginTop:1}}>{f.coords.lat}, {f.coords.lng}</div>}
+                </div>
+                <div style={{textAlign:'right',fontSize:11,color:'#6B6760'}}>{sorted.length} reading{sorted.length!==1?'s':''}<br/>{fmt(latest.date)}</div>
+              </div>
+              {crops2.length>0&&<div style={{display:'flex',gap:5,flexWrap:'wrap',marginBottom:10}}>{crops2.map(c=><span key={c} style={{fontSize:11,background:'#F8F5F0',borderRadius:6,padding:'2px 8px',color:'#6B6760',border:'1px solid #E5E2DC'}}>{c}</span>)}</div>}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:7,marginBottom:10}}>
+                {[{l:'Latest',v:`${latest.result.moisture_percent}%`,c:MC(latest.result.moisture_percent)},{l:'Average',v:`${avg2}%`,c:'#1C1A17'},{l:'Trend',v:ti,c:tc}].map(m=>(
+                  <div key={m.l} style={{background:'#F8F5F0',borderRadius:8,padding:'8px 6px',textAlign:'center',border:'1px solid #E5E2DC'}}>
+                    <div style={{fontSize:10,color:'#6B6760',marginBottom:3,fontWeight:500}}>{m.l}</div>
+                    <div style={{fontSize:13,fontWeight:500,color:m.c}}>{m.v}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mini-bar-bg"><div style={{height:5,borderRadius:3,width:`${latest.result.moisture_percent}%`,background:MC(latest.result.moisture_percent)}}/></div>
+              {sorted.length>=3&&(
+                <>
+                  <div style={{fontSize:11,color:'#6B6760',margin:'9px 0 4px',fontWeight:500}}>Moisture history</div>
+                  <div style={{display:'flex',gap:2,alignItems:'flex-end',height:36}}>
+                    {sorted.slice(0,12).reverse().map((r,i)=><div key={i} title={`${r.result.moisture_percent}%`} style={{flex:1,background:MC(r.result.moisture_percent),borderRadius:'2px 2px 0 0',height:`${r.result.moisture_percent*.36}%`,minHeight:3}}/>)}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </>);
+    };
+    return(<>
+      <div style={{display:'flex',gap:0,background:'#F8F5F0',borderRadius:9,padding:3,marginBottom:'.85rem',border:'1px solid #E5E2DC'}}>
+        {[['readings','📋 Readings '+(hist.length?`(${hist.length})`:'')],['fields','🗺 Fields '+(fields.length?`(${fields.length})`:'')]].map(([v,l])=>(
+          <button key={v} onClick={()=>setHistView(v)} style={{flex:1,padding:'7px',textAlign:'center',borderRadius:7,border:'none',cursor:'pointer',fontFamily:'DM Sans,sans-serif',fontSize:13,fontWeight:histView===v?500:400,background:histView===v?'#fff':'transparent',color:histView===v?'#3B6912':'#6B6760',transition:'all .15s',boxShadow:histView===v?'0 1px 3px rgba(0,0,0,.08)':'none'}}>{l}</button>
+        ))}
+      </div>
+      {histView==='readings'?<Readings/>:<Fields/>}
+    </>);
+  };
+
+  // ── WEATHER ──
+  const Weather=()=>{
+    if(wxL)return<div style={{textAlign:'center',padding:'3rem 1rem',color:'#6B6760'}}><div className="spin-g"/>Loading weather data…</div>;
+    if(!wx&&!wxErr)return<div className="empty" style={{padding:'3rem 1rem'}}><div className="empty-icon">🌦</div><div className="empty-title">Local weather & rainfall</div><div className="empty-sub" style={{marginBottom:20}}>View current conditions, recent rainfall, and a 7-day forecast to plan watering alongside your soil readings.</div><button className="btn btn-primary btn-full" style={{maxWidth:260,margin:'0 auto'}} onClick={reqWxLoc}>📍 Use my location</button></div>;
+    if(wxErr)return<div><div className="err-box">{wxErr}</div><button className="btn btn-primary btn-full" onClick={reqWxLoc}>Try again</button></div>;
+    const cur=wx.current,daily=wx.daily,units=wx.current_units;
+    const wmo=c=>WMO[c]||['','🌡'];
+    const todayStr=toISO(new Date());const ti=daily.time.indexOf(todayStr);const fs=ti>=0?ti:3;
+    const past=daily.time.slice(0,fs).slice(-3).map(t=>{const i=daily.time.indexOf(t);return{date:t,rain:Math.round((daily.rain_sum?.[i]||0)*10)/10};});
+    const totalRain=past.reduce((s,d)=>s+d.rain,0);
+    const fc=daily.time.slice(fs,fs+7).map((t,i)=>({date:t,code:daily.weather_code[fs+i],max:Math.round(daily.temperature_2m_max[fs+i]),min:Math.round(daily.temperature_2m_min[fs+i]),rain:Math.round((daily.rain_sum?.[fs+i]||0)*10)/10}));
+    const rainWk=Math.round(fc.reduce((s,d)=>s+d.rain,0)*10)/10;
+    let adv,aC,aB,aBdr;
+    if(totalRain>25){adv="Heavy recent rainfall — soil is likely saturated. Delay irrigation and check drainage.";aC='#1565C0';aB='#E3F2FD';aBdr='#1565C0';}
+    else if(totalRain>10){adv="Good recent rainfall. Check soil moisture before irrigating — may not be needed.";aC='#0F6E56';aB='#E0F4F1';aBdr='#0F6E56';}
+    else if(totalRain>3){adv="Light recent rainfall. Monitor soil moisture before watering young plants.";aC='#3B6912';aB='#F0F7E8';aBdr='#3B6912';}
+    else{adv="Low recent rainfall — soil may be drying out. Consider checking moisture levels and watering.";aC='#C87B00';aB='#FEF3E2';aBdr='#C87B00';}
+    if(rainWk>15)adv+=' Good rain in the 7-day forecast — natural irrigation ahead.';
+    return(<>
+      <div className="card">
+        <div className="card-label">Current conditions</div>
+        <div style={{display:'flex',alignItems:'center',gap:14}}>
+          <div style={{fontSize:44}}>{wmo(cur.weather_code)[1]}</div>
+          <div>
+            <div style={{fontSize:28,fontWeight:600,color:'#1C1A17',lineHeight:1.1}}>{Math.round(cur.temperature_2m)}{units.temperature_2m}</div>
+            <div style={{fontSize:13,color:'#6B6760'}}>{wmo(cur.weather_code)[0]}</div>
+          </div>
+          <div style={{marginLeft:'auto',textAlign:'right'}}>
+            <div style={{fontSize:11,color:'#6B6760',marginBottom:1}}>Humidity</div>
+            <div style={{fontSize:15,fontWeight:500,color:'#1C1A17',marginBottom:6}}>{cur.relative_humidity_2m}%</div>
+            <div style={{fontSize:11,color:'#6B6760',marginBottom:1}}>Wind</div>
+            <div style={{fontSize:15,fontWeight:500,color:'#1C1A17'}}>{Math.round(cur.wind_speed_10m)} {units.wind_speed_10m}</div>
+          </div>
+        </div>
+      </div>
+      <div className="adv-box" style={{background:aB,borderLeft:`3px solid ${aBdr}`}}>
+        <div style={{fontSize:12,fontWeight:500,color:aC,marginBottom:4}}>💧 Watering advisory</div>
+        <div style={{fontSize:13,color:aC,lineHeight:1.5}}>{adv}</div>
+      </div>
+      {past.length>0&&(
+        <div className="card">
+          <div className="card-label">Rainfall — past 3 days</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
+            {past.map(d=>(
+              <div key={d.date} style={{background:'#F8F5F0',borderRadius:9,padding:'10px 8px',textAlign:'center',border:'1px solid #E5E2DC'}}>
+                <div style={{fontSize:11,color:'#6B6760',marginBottom:5,fontWeight:500}}>{fmtDS(d.date)}</div>
+                <div style={{fontSize:22,fontWeight:600,color:d.rain>5?'#1565C0':d.rain>1?'#0F6E56':'#1C1A17'}}>{d.rain}</div>
+                <div style={{fontSize:11,color:'#6B6760'}}>mm</div>
+              </div>
+            ))}
+          </div>
+          <div style={{fontSize:12,color:'#6B6760',marginTop:10}}>3-day total: <strong style={{color:'#1C1A17'}}>{totalRain.toFixed(1)} mm</strong></div>
+        </div>
+      )}
+      <div className="card">
+        <div className="card-label">7-day forecast</div>
+        <div className="forecast-scroll">
+          {fc.map((d,i)=>(
+            <div key={d.date} className="fc-card">
+              <div className="fc-day">{i===0?'Today':new Date(d.date+'T12:00:00').toLocaleDateString(undefined,{weekday:'short'})}</div>
+              <div className="fc-icon">{wmo(d.code)[1]}</div>
+              <div className="fc-temp">{d.min}–{d.max}°</div>
+              {d.rain>0&&<div className="fc-rain">💧{d.rain}mm</div>}
+            </div>
+          ))}
+        </div>
+        <div style={{fontSize:12,color:'#6B6760',marginTop:10}}>Week total: <strong style={{color:rainWk>10?'#1565C0':'#1C1A17'}}>{rainWk} mm</strong></div>
+      </div>
+      <button className="btn btn-ghost btn-full" style={{marginBottom:'.9rem'}} onClick={()=>wxCoords&&fetchWx(wxCoords.lat,wxCoords.lng)}>🔄 Refresh weather</button>
+    </>);
+  };
+
+  const NAV=[['home','🏠','Home'],['analyze','🔬','Analyze'],['schedule','📅','Plan'],['history','📊','Log'],['weather','🌤','Weather']];
+
+  return(
+    <div className="app">
+      {showSettings&&<Settings apiKey={apiKey} firstRun={!apiKey} onSave={saveKey} onClose={()=>setShowSettings(false)}/>}
+
+      {dueBanner&&dueBanner.length>0&&(
+        <div style={{background:'#FFF9E6',borderBottom:'1px solid #F5C842',padding:'10px 1rem',display:'flex',alignItems:'center',gap:10}}>
+          <span style={{fontSize:18,flexShrink:0}}>⏰</span>
+          <div style={{flex:1,fontSize:13,color:'#92680A',lineHeight:1.4}}>
+            <strong>{dueBanner.length} watering event{dueBanner.length!==1?'s':''} due</strong>
+            {dueBanner.filter(d=>d.fieldName).length>0&&' — '+dueBanner.filter(d=>d.fieldName).map(d=>d.fieldName).join(', ')}
+          </div>
+          <button onClick={()=>{setTab('schedule');setDueBanner(null);}} style={{border:'none',background:'#F59E0B',color:'#fff',borderRadius:7,padding:'5px 11px',cursor:'pointer',fontSize:12,fontWeight:500,flexShrink:0}}>View</button>
+          <button onClick={()=>setDueBanner(null)} style={{border:'none',background:'transparent',cursor:'pointer',fontSize:20,color:'#92680A',padding:'0 2px',lineHeight:1,flexShrink:0}}>×</button>
+        </div>
+      )}
+
+      <div className="header">
+        <div className="logo-mark">🌱</div>
+        <div>
+          <div className="app-name">SoilSense</div>
+          <div className="app-sub">AI soil moisture analyzer</div>
+        </div>
+        <div className="header-actions">
+          {notifPerm==='granted'&&<span style={{fontSize:16}} title="Reminders enabled">🔔</span>}
+          <button className="btn btn-ghost" style={{padding:'6px 10px',fontSize:13}} onClick={()=>setShowSettings(true)} title="Settings">⚙️</button>
+          <button className="btn btn-secondary" style={{padding:'7px 12px',fontSize:13}} onClick={()=>{reset();setTab('analyze');}}>+ Scan</button>
+        </div>
+      </div>
+
+      <nav className="nav">
+        {NAV.map(([id,icon,lbl])=>(
+          <button key={id} className={'nav-btn'+(tab===id?' active':'')} onClick={()=>{if(id==='analyze')reset();setTab(id);}}>
+            <span className="nav-icon">{icon}</span>
+            <span className="nav-lbl">{lbl}{id==='schedule'&&overdue.length>0&&<span className="nav-badge">{overdue.length}</span>}</span>
+          </button>
+        ))}
+      </nav>
+
+      <div className="content">
+        {tab==='home'&&<Home/>}
+        {tab==='analyze'&&<Analyze/>}
+        {tab==='schedule'&&<Schedule/>}
+        {tab==='history'&&<History/>}
+        {tab==='weather'&&<Weather/>}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.render(<App/>, document.getElementById('root'));
+</script>
 </body>
 </html>
