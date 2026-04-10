@@ -128,10 +128,6 @@
     .spin-g{width:30px;height:30px;border:3px solid var(--border1);border-top-color:var(--green-m);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
     @keyframes spin{to{transform:rotate(360deg)}}
 
-    /* Settings overlay */
-    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:flex;align-items:center;justify-content:center;padding:1.2rem}
-    .overlay-card{background:#fff;border-radius:var(--radius-lg);padding:1.5rem;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2)}
-
     video{width:100%;display:block;max-height:240px;object-fit:cover}
     canvas{display:none}
 
@@ -148,6 +144,9 @@
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script type="text/babel">
 const {useState,useRef,useEffect,useCallback,useMemo}=React;
+
+// ── Proxy URL — replace with your Cloudflare Worker URL ──
+const PROXY_URL = 'https://summer-dawn-5be5.kjellow.workers.dev';
 
 // ── localStorage wrapper (replaces window.storage) ──
 const db={
@@ -217,43 +216,6 @@ function Gauge({pct}){
   );
 }
 
-// ── Settings Modal ──
-function Settings({apiKey,onSave,onClose,firstRun}){
-  const [k,setK]=useState(apiKey);
-  return(
-    <div className="overlay" onClick={e=>{if(e.target===e.currentTarget&&!firstRun)onClose();}}>
-      <div className="overlay-card">
-        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:'1.25rem'}}>
-          <div style={{width:38,height:38,borderRadius:9,background:'#2D5016',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>🌱</div>
-          <div>
-            <div style={{fontFamily:'Playfair Display,serif',fontSize:18,color:'#1C1A17'}}>SoilSense Setup</div>
-            <div style={{fontSize:12,color:'#6B6760'}}>AI soil moisture analyzer</div>
-          </div>
-        </div>
-        <p style={{fontSize:13,color:'#6B6760',lineHeight:1.6,marginBottom:'1rem'}}>
-          SoilSense uses the Anthropic Claude AI to analyze soil photos. Enter your API key below to get started — it's stored locally on your device and never shared.
-        </p>
-        <div style={{marginBottom:'.75rem'}}>
-          <div style={{fontSize:12,fontWeight:500,color:'#6B6760',marginBottom:5}}>Anthropic API Key</div>
-          <input className="inp" type="password" placeholder="sk-ant-api03-..." value={k} onChange={e=>setK(e.target.value)} style={{fontFamily:'monospace'}}/>
-        </div>
-        <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer"
-          style={{display:'block',fontSize:13,color:'#3B6912',marginBottom:'1.1rem',textDecoration:'none'}}>
-          Get a free API key at console.anthropic.com →
-        </a>
-        <div style={{background:'#FEF3E2',border:'1px solid #fcd96a',borderRadius:8,padding:'9px 12px',marginBottom:'1.1rem',fontSize:12,color:'#92680A',lineHeight:1.5}}>
-          ⚠ Keep your API key private. This app calls the Anthropic API directly from your browser. Standard Anthropic usage fees apply per analysis.
-        </div>
-        <div style={{display:'flex',gap:8}}>
-          {!firstRun&&<button className="btn btn-ghost" style={{flex:1}} onClick={onClose}>Cancel</button>}
-          <button className="btn btn-primary" style={{flex:2}} disabled={!k.trim()} onClick={()=>{onSave(k.trim());onClose();}}>
-            {firstRun?'Start analyzing soil →':'Save key'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Main App ──
 function App(){
@@ -287,9 +249,7 @@ function App(){
   const [dueBanner,setDueBanner]=useState(null);
   const [copied,setCopied]=useState(false);
   const [confirmClear,setConfirmClear]=useState(false);
-  const [apiKey,setApiKey]=useState('');
-  const [showSettings,setShowSettings]=useState(false);
-
+  
   const fRef=useRef(null);const f2Ref=useRef(null);
   const vidRef=useRef(null);const canRef=useRef(null);const stRef=useRef(null);
 
@@ -299,9 +259,6 @@ function App(){
       try{const r=await db.get('h');if(r)setHist(JSON.parse(r.value));}catch{}
       try{const r=await db.get('s');if(r)setSched(JSON.parse(r.value));}catch{}
       try{const r=await db.get('f');if(r)setField(r.value);}catch{}
-      const k=localStorage.getItem('ss_apikey')||'';
-      setApiKey(k);
-      if(!k)setShowSettings(true);
       setLoaded(true);
     })();
   },[]);
@@ -319,7 +276,6 @@ function App(){
   const saveH=async h=>{setHist(h);try{await db.set('h',JSON.stringify(h));}catch{}};
   const saveS=async s=>{setSched(s);try{await db.set('s',JSON.stringify(s));}catch{}};
   const saveF=async v=>{setField(v);try{await db.set('f',v);}catch{}};
-  const saveKey=k=>{setApiKey(k);localStorage.setItem('ss_apikey',k);};
 
   const handleFile=e=>{
     const f=e.target.files[0];if(!f)return;
@@ -352,25 +308,18 @@ function App(){
 
   const analyze=async()=>{
     if(!b64)return;
-    if(!apiKey){setShowSettings(true);return;}
     setBusy(true);setErr(null);
     const ci=crop?CROPS.find(c=>c.id===crop):null;
     try{
-      const res=await fetch("https://api.anthropic.com/v1/messages",{
+      const res=await fetch(PROXY_URL,{
         method:"POST",
-        headers:{
-          "Content-Type":"application/json",
-          "x-api-key":apiKey,
-          "anthropic-version":"2023-06-01",
-          "anthropic-dangerous-direct-browser-access":"true"
-        },
+        headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
           model:"claude-sonnet-4-20250514",max_tokens:1000,
           system:`You are an expert in agricultural and indoor plant soil care. Analyze the soil image.${ci?` Plant: ${ci.n} (${ci.cat==='house'?'houseplant':'farm crop'}). Optimal moisture: ${ci.l}.`:'\''} Respond ONLY with valid JSON, no markdown: {"moisture_percent":<0-100>,"status":"Very Dry"|"Dry"|"Optimal"|"Moist"|"Wet"|"Saturated","seedling_ready":true|false,"watering_needed":true|false,"seedling_rec":"<one sentence: for houseplants advise on repotting or plant health; for farm crops advise on planting seedlings>","watering_rec":"<one clear watering sentence tailored to the plant type and moisture level>","tip":"<one practical care tip for ${ci?ci.n:'this plant'} at this moisture level>"," confidence":"Low"|"Medium"|"High","visual_cue":"<brief visual description>"}`,
           messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},{type:"text",text:"Analyze soil moisture."}]}]
         })
       });
-      if(res.status===401){setErr("Invalid API key. Tap ⚙ to update your key.");setBusy(false);return;}
       const data=await res.json();
       if(data.error){setErr("API error: "+data.error.message);setBusy(false);return;}
       const txt=data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim();
@@ -973,8 +922,6 @@ function App(){
 
   return(
     <div className="app">
-      {showSettings&&<Settings apiKey={apiKey} firstRun={!apiKey} onSave={saveKey} onClose={()=>setShowSettings(false)}/>}
-
       {dueBanner&&dueBanner.length>0&&(
         <div style={{background:'#FFF9E6',borderBottom:'1px solid #F5C842',padding:'10px 1rem',display:'flex',alignItems:'center',gap:10}}>
           <span style={{fontSize:18,flexShrink:0}}>⏰</span>
@@ -995,8 +942,7 @@ function App(){
         </div>
         <div className="header-actions">
           {notifPerm==='granted'&&<span style={{fontSize:16}} title="Reminders enabled">🔔</span>}
-          <button className="btn btn-ghost" style={{padding:'6px 10px',fontSize:13}} onClick={()=>setShowSettings(true)} title="Settings">⚙️</button>
-          <button className="btn btn-secondary" style={{padding:'7px 12px',fontSize:13}} onClick={()=>{reset();setTab('analyze');}}>+ Scan</button>
+<button className="btn btn-secondary" style={{padding:'7px 12px',fontSize:13}} onClick={()=>{reset();setTab('analyze');}}>+ Scan</button>
         </div>
       </div>
 
