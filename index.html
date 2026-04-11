@@ -146,7 +146,7 @@
 const {useState,useRef,useEffect,useCallback,useMemo}=React;
 
 // ── Proxy URL — replace with your Cloudflare Worker URL ──
-const PROXY_URL = 'https://summer-dawn-5be5.kjellow.workers.dev';
+const PROXY_URL = 'YOUR_WORKER_URL';
 
 // ── localStorage wrapper (replaces window.storage) ──
 const db={
@@ -249,6 +249,8 @@ function App(){
   const [dueBanner,setDueBanner]=useState(null);
   const [copied,setCopied]=useState(false);
   const [confirmClear,setConfirmClear]=useState(false);
+  const [showLabForm,setShowLabForm]=useState(false);
+  const [labVals,setLabVals]=useState({});
   
   const fRef=useRef(null);const f2Ref=useRef(null);
   const vidRef=useRef(null);const canRef=useRef(null);const stRef=useRef(null);
@@ -316,7 +318,7 @@ function App(){
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
           model:"claude-sonnet-4-20250514",max_tokens:1000,
-          system:`You are an expert in agricultural and indoor plant soil care. Analyze the soil image.${ci?` Plant: ${ci.n} (${ci.cat==='house'?'houseplant':'farm crop'}). Optimal moisture: ${ci.l}.`:'\''} Respond ONLY with valid JSON, no markdown: {"moisture_percent":<0-100>,"status":"Very Dry"|"Dry"|"Optimal"|"Moist"|"Wet"|"Saturated","seedling_ready":true|false,"watering_needed":true|false,"seedling_rec":"<one sentence: for houseplants advise on repotting or plant health; for farm crops advise on planting seedlings>","watering_rec":"<one clear watering sentence tailored to the plant type and moisture level>","tip":"<one practical care tip for ${ci?ci.n:'this plant'} at this moisture level>"," confidence":"Low"|"Medium"|"High","visual_cue":"<brief visual description>"}`,
+          system:`You are an expert agricultural soil scientist and plant pathologist. Analyze the soil/potting mix AND any visible plants or leaves in the image.${ci?` Plant: ${ci.n} (${ci.cat==='house'?'houseplant':'farm crop'}). Optimal moisture: ${ci.l}.`:'\''} Respond ONLY with valid JSON, no markdown: {"moisture_percent":<0-100>,"status":"Very Dry"|"Dry"|"Optimal"|"Moist"|"Wet"|"Saturated","seedling_ready":true|false,"watering_needed":true|false,"seedling_rec":"<one sentence: for houseplants advise on repotting or plant health; for farm crops advise on planting seedlings>","watering_rec":"<one clear watering sentence tailored to the plant type and moisture level>","tip":"<one practical care tip for ${ci?ci.n:'this plant'} at this moisture level>"," confidence":"Low"|"Medium"|"High","visual_cue":"<brief visual description>","nutrients":{"nitrogen":{"level":"Low|Adequate|High","score":0,"indicator":"<visual basis>"},"phosphorus":{"level":"Low|Adequate|High","score":0,"indicator":"<visual basis>"},"potassium":{"level":"Low|Adequate|High","score":0,"indicator":"<visual basis>"},"organic_matter":{"level":"Low|Moderate|High","score":0,"indicator":"<visual basis>"},"overall_health":"Poor|Fair|Good|Excellent","health_score":0},"plant_symptoms":{"detected":false,"symptoms":[],"likely_deficiency":"None detected","plant_health":"Good"},"fertilizer_rec":"<one fertilizer recommendation>","nutrient_disclaimer":"Visual estimate only - confirm with a soil test kit"}`,
           messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},{type:"text",text:"Analyze soil moisture."}]}]
         })
       });
@@ -388,7 +390,7 @@ function App(){
   };
 
   const copyRep=async()=>{try{await navigator.clipboard.writeText(makeReport());setCopied(true);setTimeout(()=>setCopied(false),2000);}catch{}};
-  const reset=()=>{setStep('setup');setImage(null);setB64(null);setResult(null);setErr(null);setShowAS(false);stopCam();};
+  const reset=()=>{setStep('setup');setImage(null);setB64(null);setResult(null);setErr(null);setShowAS(false);setShowLabForm(false);setLabVals({});stopCam();};
 
   const fields=useMemo(()=>{
     const g={};hist.forEach(h=>{const k=h.fieldName||'(Untagged)';if(!g[k])g[k]={name:k,coords:h.coords,readings:[]};g[k].readings.push(h);});
@@ -628,6 +630,77 @@ function App(){
             <div style={{fontSize:13,color:'#2d5410',lineHeight:1.5}}>{result.tip}</div>
           </div>
         </div>
+
+        {result.nutrients&&(<>
+        <div className="card">
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+            <div className="card-label" style={{margin:0}}>Nutrient analysis</div>
+            <span style={{fontSize:11,background:'#FEF3E2',color:'#C87B00',border:'1px solid #fcd96a',borderRadius:20,padding:'2px 9px',fontWeight:500}}>AI visual estimate</span>
+          </div>
+          {[{k:'nitrogen',l:'Nitrogen (N)',e:'🌿'},{k:'phosphorus',l:'Phosphorus (P)',e:'🌸'},{k:'potassium',l:'Potassium (K)',e:'💪'},{k:'organic_matter',l:'Organic matter',e:'🍂'}].map(({k,l,e})=>{
+            const n=result.nutrients[k];if(!n)return null;
+            const lc=n.level==='Low'?'#B91C1C':n.level==='High'&&k!=='organic_matter'?'#1565C0':'#2D5016';
+            const lb=n.level==='Low'?'#FFF5F5':n.level==='High'&&k!=='organic_matter'?'#E3F2FD':'#F0F7E8';
+            const bc=n.level==='Low'?'#B91C1C':n.level==='High'&&k!=='organic_matter'?'#1565C0':'#3B6912';
+            return(<div key={k} style={{marginBottom:12}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:5}}>
+                <div style={{display:'flex',alignItems:'center',gap:6}}><span style={{fontSize:15}}>{e}</span><span style={{fontSize:13,fontWeight:500,color:'var(--color-text-primary)'}}>{l}</span></div>
+                <span className="badge" style={{background:lb,color:lc,fontSize:11}}>{n.level}</span>
+              </div>
+              <div style={{height:7,borderRadius:4,background:'var(--color-border-tertiary)',overflow:'hidden'}}>
+                <div style={{height:7,borderRadius:4,width:n.score+'%',background:bc,transition:'width 1s ease'}}/>
+              </div>
+              <div style={{fontSize:11,color:'var(--color-text-secondary)',marginTop:3}}>{n.indicator}</div>
+            </div>);
+          })}
+          <div style={{borderTop:'0.5px solid var(--color-border-tertiary)',paddingTop:12,marginTop:4,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div><div style={{fontSize:12,color:'var(--color-text-secondary)',marginBottom:2}}>Overall soil health</div><div style={{fontSize:16,fontWeight:600,color:{Poor:'#B91C1C',Fair:'#C87B00',Good:'#3B6912',Excellent:'#0F6E56'}[result.nutrients.overall_health]||'#555'}}>{result.nutrients.overall_health}</div></div>
+            <div style={{width:56,height:56,borderRadius:'50%',background:'var(--color-background-secondary)',border:'3px solid '+({Poor:'#B91C1C',Fair:'#C87B00',Good:'#3B6912',Excellent:'#0F6E56'}[result.nutrients.overall_health]||'#555'),display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column'}}>
+              <span style={{fontSize:16,fontWeight:700,color:{Poor:'#B91C1C',Fair:'#C87B00',Good:'#3B6912',Excellent:'#0F6E56'}[result.nutrients.overall_health]||'#555'}}>{result.nutrients.health_score}</span>
+              <span style={{fontSize:9,color:'var(--color-text-secondary)'}}>/ 100</span>
+            </div>
+          </div>
+          {result.fertilizer_rec&&<div style={{background:'#E3F2FD',border:'1px solid #90CAF9',borderRadius:10,padding:'10px 13px',marginTop:12}}><div style={{fontSize:12,fontWeight:500,color:'#1565C0',marginBottom:3}}>🌿 Fertilizer recommendation</div><div style={{fontSize:13,color:'#1565C0',lineHeight:1.5}}>{result.fertilizer_rec}</div></div>}
+          <div style={{fontSize:11,color:'var(--color-text-secondary)',marginTop:10,lineHeight:1.4,borderTop:'0.5px solid var(--color-border-tertiary)',paddingTop:8}}>⚠ {result.nutrient_disclaimer||'Visual AI estimate only — confirm with a soil test kit for precise nutrient levels.'}</div>
+        </div>
+
+        {result.plant_symptoms?.detected&&<div className="card">
+          <div className="card-label">Plant symptoms detected</div>
+          <div style={{display:'flex',alignItems:'flex-start',gap:10,marginBottom:10}}>
+            <div style={{width:34,height:34,borderRadius:8,background:'#FFF3E0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>🔍</div>
+            <div>
+              <div style={{fontSize:13,fontWeight:500,color:'var(--color-text-primary)',marginBottom:4}}>Likely deficiency: <span style={{color:'#C87B00'}}>{result.plant_symptoms.likely_deficiency}</span></div>
+              {result.plant_symptoms.symptoms?.length>0&&<ul style={{paddingLeft:16,margin:0}}>{result.plant_symptoms.symptoms.map((s,i)=><li key={i} style={{fontSize:13,color:'var(--color-text-primary)',lineHeight:1.6}}>{s}</li>)}</ul>}
+            </div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <span style={{fontSize:12,color:'var(--color-text-secondary)'}}>Plant health:</span>
+            <span className="badge" style={{background:{Poor:'#FFF5F5',Fair:'#FFF3E0',Good:'#F0F7E8',Excellent:'#E0F4F1'}[result.plant_symptoms.plant_health]||'#f5f5f5',color:{Poor:'#B91C1C',Fair:'#C87B00',Good:'#2D5016',Excellent:'#0F6E56'}[result.plant_symptoms.plant_health]||'#555'}}>{result.plant_symptoms.plant_health}</span>
+          </div>
+        </div>}
+
+        <div className="card" style={{padding:'1rem'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:showLabForm?10:0}}>
+            <div><div style={{fontSize:13,fontWeight:500,color:'var(--color-text-primary)'}}>🧪 Add lab test results</div><div style={{fontSize:12,color:'var(--color-text-secondary)',marginTop:2}}>Override AI estimates with actual values</div></div>
+            <button className="btn btn-ghost" style={{padding:'6px 12px',fontSize:12}} onClick={()=>setShowLabForm(v=>!v)}>{showLabForm?'Cancel':'+ Add'}</button>
+          </div>
+          {showLabForm&&(<div style={{display:'flex',flexDirection:'column',gap:8,paddingTop:4}}>
+            {[{k:'n',l:'Nitrogen (N)',u:'ppm'},{k:'p',l:'Phosphorus (P)',u:'ppm'},{k:'k',l:'Potassium (K)',u:'ppm'},{k:'ph',l:'pH level',u:''},{k:'om',l:'Organic matter',u:'%'}].map(({k,l,u})=>(
+              <div key={k} style={{display:'flex',alignItems:'center',gap:8}}>
+                <label style={{fontSize:13,color:'var(--color-text-primary)',width:130,flexShrink:0}}>{l}</label>
+                <input type="number" step="0.1" className="inp" style={{flex:1}} placeholder={u||'value'} value={labVals[k]||''} onChange={e=>setLabVals(v=>({...v,[k]:e.target.value}))}/>
+                {u&&<span style={{fontSize:12,color:'var(--color-text-secondary)',flexShrink:0,width:28}}>{u}</span>}
+              </div>
+            ))}
+            <button className="btn btn-primary" onClick={()=>{setShowLabForm(false);}} style={{marginTop:4}}>Save lab results</button>
+          </div>)}
+          {!showLabForm&&Object.keys(labVals).some(k=>labVals[k])&&(
+            <div style={{marginTop:10,display:'flex',flexWrap:'wrap',gap:6}}>
+              {Object.entries({n:'N',p:'P',k:'K',ph:'pH',om:'OM%'}).map(([key,lbl])=>labVals[key]?<span key={key} style={{fontSize:12,background:'#E3F2FD',color:'#1565C0',borderRadius:20,padding:'3px 10px',border:'1px solid #90CAF9'}}>{lbl}: {labVals[key]}{key==='om'?'%':key==='ph'?'':' ppm'}</span>:null)}
+            </div>
+          )}
+        </div>
+        </>)}
 
         {!showAS
           ?<div style={{display:'flex',gap:7,marginBottom:'.9rem'}}>
