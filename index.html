@@ -146,29 +146,115 @@ const db={
 };
 
 // ── Plant data ──
+// ── Plant library ──
 const FARM=[
   {id:'corn',e:'🌽',n:'Corn',r:[50,70],l:'50–70%',wd:4},
   {id:'wheat',e:'🌾',n:'Wheat',r:[40,60],l:'40–60%',wd:6},
   {id:'tomato',e:'🍅',n:'Tomatoes',r:[55,75],l:'55–75%',wd:2},
   {id:'seedling',e:'🌱',n:'Seedlings',r:[50,70],l:'50–70%',wd:2},
   {id:'lettuce',e:'🥬',n:'Leafy greens',r:[60,75],l:'60–75%',wd:2},
-  {id:'potato',e:'🥔',n:'Root veg',r:[45,65],l:'45–65%',wd:5},
+  {id:'potato',e:'🥔',n:'Potato',r:[45,65],l:'45–65%',wd:5},
   {id:'beans',e:'🫘',n:'Beans',r:[45,65],l:'45–65%',wd:3},
   {id:'rice',e:'🍚',n:'Rice',r:[75,90],l:'75–90%',wd:1},
   {id:'cotton',e:'🏵️',n:'Cotton',r:[40,60],l:'40–60%',wd:6},
+  {id:'soybean',e:'🌿',n:'Soybean',r:[50,70],l:'50–70%',wd:4},
+  {id:'sorghum',e:'🌾',n:'Sorghum',r:[40,65],l:'40–65%',wd:7},
+  {id:'sunflower',e:'🌻',n:'Sunflower',r:[45,65],l:'45–65%',wd:5},
+  {id:'alfalfa',e:'🌿',n:'Alfalfa',r:[55,70],l:'55–70%',wd:3},
+  {id:'tobacco',e:'🍃',n:'Tobacco',r:[50,65],l:'50–65%',wd:4},
 ];
+
+const CARIB=[
+  {id:'banana',e:'🍌',n:'Banana',r:[60,80],l:'60–80%',wd:2},
+  {id:'plantain',e:'🍌',n:'Plantain',r:[60,80],l:'60–80%',wd:2},
+  {id:'pumpkin',e:'🎃',n:'Pumpkin',r:[50,70],l:'50–70%',wd:3},
+  {id:'scotchbonnet',e:'🌶️',n:'Scotch bonnet',r:[50,65],l:'50–65%',wd:2},
+  {id:'callaloo',e:'🥬',n:'Callaloo',r:[60,75],l:'60–75%',wd:2},
+  {id:'dasheen',e:'🪴',n:'Dasheen / Taro',r:[70,85],l:'70–85%',wd:2},
+  {id:'yam',e:'🍠',n:'Yam',r:[55,70],l:'55–70%',wd:3},
+  {id:'sweetpotato',e:'🍠',n:'Sweet potato',r:[50,65],l:'50–65%',wd:3},
+  {id:'cassava',e:'🌿',n:'Cassava',r:[45,65],l:'45–65%',wd:6},
+  {id:'ackee',e:'🌳',n:'Ackee',r:[50,65],l:'50–65%',wd:4},
+  {id:'breadfruit',e:'🟢',n:'Breadfruit',r:[60,75],l:'60–75%',wd:3},
+  {id:'sugarcane',e:'🎋',n:'Sugarcane',r:[65,80],l:'65–80%',wd:2},
+  {id:'okra',e:'🫛',n:'Okra',r:[55,70],l:'55–70%',wd:2},
+  {id:'chayote',e:'🥦',n:'Cho cho',r:[55,70],l:'55–70%',wd:3},
+  {id:'coconut',e:'🥥',n:'Coconut palm',r:[55,70],l:'55–70%',wd:4},
+  {id:'ginger_root',e:'🫚',n:'Ginger',r:[60,75],l:'60–75%',wd:2},
+  {id:'turmeric',e:'🟡',n:'Turmeric',r:[60,75],l:'60–75%',wd:2},
+  {id:'thyme_island',e:'🌿',n:'Island thyme',r:[45,60],l:'45–60%',wd:3},
+];
+
+const FRUITS=[
+  {id:'strawberry',e:'🍓',n:'Strawberry',r:[55,70],l:'55–70%',wd:2},
+  {id:'watermelon',e:'🍉',n:'Watermelon',r:[55,70],l:'55–70%',wd:3},
+  {id:'mango',e:'🥭',n:'Mango',r:[50,65],l:'50–65%',wd:5},
+  {id:'avocado',e:'🥑',n:'Avocado',r:[50,65],l:'50–65%',wd:5},
+  {id:'citrus',e:'🍊',n:'Citrus',r:[50,65],l:'50–65%',wd:5},
+  {id:'pineapple',e:'🍍',n:'Pineapple',r:[40,60],l:'40–60%',wd:5},
+  {id:'papaya',e:'🧡',n:'Papaya',r:[55,70],l:'55–70%',wd:3},
+  {id:'passionfruit',e:'🟣',n:'Passion fruit',r:[55,70],l:'55–70%',wd:3},
+  {id:'guava',e:'🍈',n:'Guava',r:[50,65],l:'50–65%',wd:4},
+  {id:'grapes',e:'🍇',n:'Grapes',r:[45,60],l:'45–60%',wd:5},
+  {id:'melon',e:'🍈',n:'Melon',r:[55,70],l:'55–70%',wd:3},
+  {id:'blueberry',e:'🫐',n:'Blueberry',r:[55,70],l:'55–70%',wd:3},
+  {id:'peach',e:'🍑',n:'Peach / Nectarine',r:[45,65],l:'45–65%',wd:5},
+  {id:'apple',e:'🍎',n:'Apple tree',r:[45,65],l:'45–65%',wd:6},
+  {id:'fig',e:'🫐',n:'Fig',r:[40,60],l:'40–60%',wd:6},
+  {id:'soursop',e:'🍏',n:'Soursop',r:[55,70],l:'55–70%',wd:4},
+];
+
+const VEGS=[
+  {id:'bellpepper',e:'🫑',n:'Bell pepper',r:[55,70],l:'55–70%',wd:2},
+  {id:'cucumber',e:'🥒',n:'Cucumber',r:[60,75],l:'60–75%',wd:2},
+  {id:'zucchini',e:'🥒',n:'Zucchini',r:[55,70],l:'55–70%',wd:2},
+  {id:'garlic',e:'🧄',n:'Garlic',r:[40,60],l:'40–60%',wd:5},
+  {id:'onion',e:'🧅',n:'Onion',r:[45,65],l:'45–65%',wd:4},
+  {id:'carrot',e:'🥕',n:'Carrot',r:[50,70],l:'50–70%',wd:3},
+  {id:'cabbage',e:'🥦',n:'Cabbage',r:[55,70],l:'55–70%',wd:3},
+  {id:'spinach',e:'🥬',n:'Spinach',r:[60,75],l:'60–75%',wd:2},
+  {id:'kale',e:'🥬',n:'Kale',r:[55,70],l:'55–70%',wd:2},
+  {id:'broccoli',e:'🥦',n:'Broccoli',r:[55,70],l:'55–70%',wd:3},
+  {id:'eggplant',e:'🍆',n:'Eggplant',r:[55,70],l:'55–70%',wd:2},
+  {id:'basil',e:'🌿',n:'Basil',r:[50,65],l:'50–65%',wd:2},
+  {id:'mint',e:'🌿',n:'Mint',r:[55,70],l:'55–70%',wd:2},
+  {id:'rosemary',e:'🌿',n:'Rosemary',r:[35,55],l:'35–55%',wd:7},
+  {id:'chive',e:'🌿',n:'Chives',r:[50,65],l:'50–65%',wd:3},
+  {id:'cilantro',e:'🌿',n:'Cilantro',r:[50,65],l:'50–65%',wd:2},
+  {id:'parsley',e:'🌿',n:'Parsley',r:[50,65],l:'50–65%',wd:2},
+  {id:'celery',e:'🌿',n:'Celery',r:[65,80],l:'65–80%',wd:2},
+];
+
 const HOUSE=[
   {id:'succulent',e:'🌵',n:'Succulents',r:[10,30],l:'10–30%',wd:14},
-  {id:'tropical',e:'🍃',n:'Tropicals',r:[55,70],l:'55–70%',wd:5},
+  {id:'cactus',e:'🌵',n:'Cactus',r:[5,20],l:'5–20%',wd:21},
+  {id:'tropical',e:'🍃',n:'Monstera',r:[55,70],l:'55–70%',wd:5},
+  {id:'pothos',e:'🪴',n:'Pothos',r:[50,65],l:'50–65%',wd:7},
   {id:'orchid',e:'🌸',n:'Orchids',r:[40,55],l:'40–55%',wd:7},
   {id:'fern',e:'🌿',n:'Ferns',r:[65,80],l:'65–80%',wd:2},
   {id:'herbs_pot',e:'🫙',n:'Potted herbs',r:[45,60],l:'45–60%',wd:3},
-  {id:'tree_in',e:'🌲',n:'Indoor trees',r:[40,55],l:'40–55%',wd:7},
+  {id:'tree_in',e:'🌲',n:'Fiddle leaf fig',r:[40,55],l:'40–55%',wd:7},
+  {id:'rubber',e:'🌳',n:'Rubber plant',r:[40,55],l:'40–55%',wd:7},
   {id:'snake',e:'🪴',n:'Snake plant',r:[20,40],l:'20–40%',wd:14},
+  {id:'zzplant',e:'🌿',n:'ZZ plant',r:[20,40],l:'20–40%',wd:14},
+  {id:'spider',e:'🌿',n:'Spider plant',r:[50,65],l:'50–65%',wd:5},
   {id:'peacelily',e:'💐',n:'Peace lily',r:[60,75],l:'60–75%',wd:3},
+  {id:'calathea',e:'🌺',n:'Calathea',r:[60,75],l:'60–75%',wd:3},
+  {id:'anthurium',e:'🌺',n:'Anthurium',r:[55,70],l:'55–70%',wd:4},
   {id:'bonsai',e:'🎋',n:'Bonsai',r:[45,65],l:'45–65%',wd:3},
+  {id:'aloe',e:'🌵',n:'Aloe vera',r:[15,35],l:'15–35%',wd:14},
+  {id:'lavender',e:'💜',n:'Lavender',r:[35,50],l:'35–50%',wd:7},
 ];
-const ALL=[...FARM,...HOUSE];
+
+const CATS=[
+  {id:'farm',label:'🌾 Field crops'},
+  {id:'carib',label:'🌴 Caribbean'},
+  {id:'fruits',label:'🍊 Fruits'},
+  {id:'vegs',label:'🥦 Vegetables'},
+  {id:'house',label:'🪴 Houseplants'},
+];
+const CROP_MAP={farm:FARM,carib:CARIB,fruits:FRUITS,vegs:VEGS,house:HOUSE};
+const ALL=[...FARM,...CARIB,...FRUITS,...VEGS,...HOUSE];
 
 const WMO={0:['Clear','☀️'],1:['Mainly clear','🌤'],2:['Partly cloudy','⛅'],3:['Overcast','☁️'],45:['Fog','🌫'],51:['Drizzle','🌦'],53:['Drizzle','🌦'],55:['Drizzle','🌧'],61:['Light rain','🌧'],63:['Rain','🌧'],65:['Heavy rain','⛈'],71:['Snow','🌨'],80:['Showers','🌦'],81:['Showers','🌧'],95:['Thunder','⛈'],99:['Thunder','⛈']};
 
@@ -302,13 +388,14 @@ function App(){
     if(!b64)return;setBusy(true);setErr(null);
     const ci=crop?ALL.find(c=>c.id===crop):null;
     const isH=HOUSE.some(h=>h.id===crop);
+  const isTropical=cropCat==='carib';
     try{
       const res=await fetch(PROXY_URL,{
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
           model:'claude-sonnet-4-20250514',max_tokens:1500,
-          system:`You are an expert agricultural soil scientist and plant pathologist. Analyze the soil or potting mix AND any visible plants or leaves in the image.${ci?` Plant: ${ci.n} (${isH?'houseplant':'farm crop'}). Optimal moisture: ${ci.l}.`:''} Respond ONLY with valid JSON, no markdown, no trailing commas: {"moisture_percent":<0-100>,"status":"Very Dry"|"Dry"|"Optimal"|"Moist"|"Wet"|"Saturated","seedling_ready":true|false,"watering_needed":true|false,"seedling_rec":"<one sentence>","watering_rec":"<one sentence tailored to plant type>","tip":"<one practical care tip>","confidence":"Low"|"Medium"|"High","visual_cue":"<brief visual description>","nutrients":{"nitrogen":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis for this estimate>"},"phosphorus":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis>"},"potassium":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis>"},"organic_matter":{"level":"Low"|"Moderate"|"High","score":<0-100>,"indicator":"<visual basis>"},"overall_health":"Poor"|"Fair"|"Good"|"Excellent","health_score":<0-100>},"plant_symptoms":{"detected":true|false,"symptoms":["<observed symptom>"],"likely_deficiency":"Nitrogen"|"Phosphorus"|"Potassium"|"Iron"|"Magnesium"|"Calcium"|"None detected","plant_health":"Poor"|"Fair"|"Good"|"Excellent"},"fertilizer_rec":"<one specific fertilizer recommendation based on deficiencies>","nutrient_disclaimer":"Visual AI estimate only — confirm with a soil test kit for precise values"}`,
-          messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:'Analyze the soil moisture and nutrients. If plant leaves are visible, assess health and deficiency symptoms.'}]}]
+          system:`You are an expert agricultural soil scientist, tropical agronomist, plant pathologist, and integrated pest management (IPM) specialist with deep knowledge of Caribbean and tropical crops including banana, plantain, scotch bonnet pepper, callaloo, dasheen, ackee, breadfruit, sugarcane, cassava, and yam. Analyze the soil or potting mix AND any visible plants, leaves, and soil surface in the image — looking carefully for any signs of pest infestation including visible insects, larvae, grubs, fungal growth, tunneling, webbing, mounding, or plant symptoms that suggest soil pest activity.${ci?` Plant: ${ci.n} (${isH?'houseplant':'farm crop'}). Optimal moisture: ${ci.l}.`:''} Respond ONLY with valid JSON, no markdown, no trailing commas: {"moisture_percent":<0-100>,"status":"Very Dry"|"Dry"|"Optimal"|"Moist"|"Wet"|"Saturated","seedling_ready":true|false,"watering_needed":true|false,"seedling_rec":"<one sentence>","watering_rec":"<one sentence tailored to plant type>","tip":"<one practical care tip>","confidence":"Low"|"Medium"|"High","visual_cue":"<brief visual description>","nutrients":{"nitrogen":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis for this estimate>"},"phosphorus":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis>"},"potassium":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis>"},"organic_matter":{"level":"Low"|"Moderate"|"High","score":<0-100>,"indicator":"<visual basis>"},"overall_health":"Poor"|"Fair"|"Good"|"Excellent","health_score":<0-100>},"plant_symptoms":{"detected":true|false,"symptoms":["<observed symptom>"],"likely_deficiency":"Nitrogen"|"Phosphorus"|"Potassium"|"Iron"|"Magnesium"|"Calcium"|"None detected","plant_health":"Poor"|"Fair"|"Good"|"Excellent"},"fertilizer_rec":"<one specific fertilizer recommendation based on deficiencies>","nutrient_disclaimer":"Visual AI estimate only — confirm with a soil test kit for precise values","pest_analysis":{"detected":true|false,"signs":["<observed sign 1>","<observed sign 2>"],"likely_pests":["<pest name>"],"severity":"None"|"Low"|"Moderate"|"High","affected_area":"<brief description of where pests observed>","treatment_rec":"<one specific chemical or integrated treatment recommendation>","organic_option":"<one organic or natural treatment alternative>","urgency":"Monitor"|"Act soon"|"Treat immediately","prevention_tip":"<one prevention tip tailored to the plant and environment>"}}`,
+          messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:'Analyze the soil moisture, nutrients, and scan carefully for any pest activity. Look for visible insects, larvae, grubs, webbing, mounding, tunneling, fungal growth, or any plant symptoms suggesting soil pest infestation. If plant leaves or stems are visible, assess health, deficiency symptoms, and any pest damage.'}]}]
         })
       });
       if(!res.ok){const e=await res.json().catch(()=>({}));setErr('API error: '+(e.error?.message||res.statusText));setBusy(false);return;}
@@ -379,7 +466,7 @@ function App(){
   const pending=useMemo(()=>sched.filter(s=>!s.done),[sched]);
   const overdue=useMemo(()=>{const n=dayStart();return sched.filter(s=>!s.done&&new Date(s.date)<n);},[sched]);
 
-  const curList=cropCat==='farm'?FARM:HOUSE;
+  // curList handled inline via CROP_MAP
   const isH=HOUSE.some(h=>h.id===crop);
   const stepIdx={setup:0,capture:1,results:2,report:3}[step]||0;
 
@@ -400,7 +487,7 @@ function App(){
               </div>
               {last.fieldName&&<div style={{fontSize:12,color:'#6B6760',marginBottom:3}}>{last.isHouse?'🪴':'📍'} {last.fieldName}</div>}
               {last.cropInfo&&<div style={{fontSize:12,color:'#6B6760',marginBottom:3}}>{last.cropInfo.e} {last.cropInfo.n}</div>}
-              {last.result.nutrients&&<div style={{fontSize:12,color:'#6B6760'}}>Soil health: <strong style={{color:HC[last.result.nutrients.overall_health]||'#555'}}>{last.result.nutrients.overall_health}</strong></div>}
+              {last.result.nutrients&&<div style={{fontSize:12,color:'#6B6760'}}>Soil health: <strong style={{color:HC[last.result.nutrients.overall_health]||'#555'}}>{last.result.nutrients.overall_health}</strong>{last.result.pest_analysis?.detected&&<span style={{marginLeft:8,fontSize:11,background:'#FFF5F5',color:'#B91C1C',borderRadius:10,padding:'1px 7px'}}>🐛 {last.result.pest_analysis.severity} pest risk</span>}</div>}
               <div style={{fontSize:11,color:'#9A9690',marginTop:3}}>{fmt(last.date)}</div>
             </div>
           </div>
@@ -440,6 +527,7 @@ function App(){
                   <span style={{fontWeight:600,fontSize:14,color:MC(h.result.moisture_percent)}}>{h.result.moisture_percent}%</span>
                   <span className="badge" style={{background:SB(h.result.status),color:SC(h.result.status)}}>{h.result.status}</span>
                   {h.result.nutrients&&<span className="badge" style={{background:HB[h.result.nutrients.overall_health]||'#f5f5f5',color:HC[h.result.nutrients.overall_health]||'#555'}}>{h.result.nutrients.overall_health}</span>}
+                  {h.result.pest_analysis?.detected&&<span className="badge" style={{background:'#FFF5F5',color:'#B91C1C'}}>🐛 {h.result.pest_analysis.severity}</span>}
                 </div>
                 <div className="mbb"><div style={{height:5,borderRadius:3,width:`${h.result.moisture_percent}%`,background:MC(h.result.moisture_percent)}}/></div>
                 <div style={{fontSize:11,color:'#9A9690',display:'flex',gap:8}}><span>{fmt(h.date)}</span>{h.fieldName&&<span>📍 {h.fieldName}</span>}</div>
@@ -484,18 +572,17 @@ function App(){
       {(step==='setup'||step==='capture')&&(<>
         <div className="card">
           <div className="cl">Plant type <span style={{fontWeight:400,textTransform:'none',letterSpacing:0,color:'#bbb'}}>(optional)</span></div>
-          <div className="ctog">
-            <button className={'ctb'+(cropCat==='farm'?' active':'')} onClick={()=>{setCropCat('farm');setCrop(null);}}>🌾 Farm crops</button>
-            <button className={'ctb'+(cropCat==='house'?' active':'')} onClick={()=>{setCropCat('house');setCrop(null);}}>🪴 Houseplants</button>
+          <div style={{display:'flex',gap:5,overflowX:'auto',paddingBottom:3,marginBottom:10,scrollbarWidth:'none'}}>
+            {CATS.map(cat=><button key={cat.id} onClick={()=>{setCropCat(cat.id);setCrop(null);}} style={{flexShrink:0,padding:'7px 13px',borderRadius:20,border:'1.5px solid',borderColor:cropCat===cat.id?'#3B6912':'#E5E2DC',background:cropCat===cat.id?'#F0F7E8':'#fff',color:cropCat===cat.id?'#2D5016':'#6B6760',fontFamily:'DM Sans,sans-serif',fontSize:13,fontWeight:cropCat===cat.id?500:400,cursor:'pointer',whiteSpace:'nowrap',transition:'all .15s'}}>{cat.label}</button>)}
           </div>
           <div className="cg">
-            {curList.map(c=><button key={c.id} className={'cb'+(crop===c.id?' sel':'')} onClick={()=>setCrop(crop===c.id?null:c.id)}><span style={{fontSize:21,display:'block',marginBottom:3,lineHeight:1}}>{c.e}</span><div style={{fontSize:12,fontWeight:500,color:'#1C1A17',lineHeight:1.2}}>{c.n}</div><div style={{fontSize:10,color:'#6B6760',marginTop:1}}>{c.l}</div></button>)}
+            {(CROP_MAP[cropCat]||FARM).map(c=><button key={c.id} className={'cb'+(crop===c.id?' sel':'')} onClick={()=>setCrop(crop===c.id?null:c.id)}><span style={{fontSize:21,display:'block',marginBottom:3,lineHeight:1}}>{c.e}</span><div style={{fontSize:12,fontWeight:500,color:'#1C1A17',lineHeight:1.2}}>{c.n}</div><div style={{fontSize:10,color:'#6B6760',marginTop:1}}>{c.l}</div></button>)}
           </div>
         </div>
         <div className="card" style={{padding:'1rem'}}>
           <div className="cl">{isH?'Pot / location':'Field name'} <span style={{fontWeight:400,textTransform:'none',letterSpacing:0,color:'#bbb'}}>(optional)</span></div>
           <div style={{display:'flex',gap:8}}>
-            <input className="inp" type="text" placeholder={isH?'e.g. Living room windowsill':'e.g. North plot'} value={field} onChange={e=>saveF(e.target.value)}/>
+            <input className="inp" type="text" placeholder={isH?'e.g. Living room windowsill':cropCat==='carib'?'e.g. Back yard, hillside plot':'e.g. North plot, Field 3'} value={field} onChange={e=>saveF(e.target.value)}/>
             <button className="btn bgh" style={{padding:'9px 12px',flexShrink:0}} onClick={getGPS} disabled={gpsL}>{gpsL?'…':'📍'}</button>
           </div>
           {gps&&<div style={{fontSize:12,color:'#3B6912',marginTop:6}}>📍 {gps.lat}, {gps.lng}</div>}
@@ -506,7 +593,7 @@ function App(){
         <div className="uzone" onClick={()=>fRef.current.click()}>
           <div style={{fontSize:36,marginBottom:8}}>{isH?'🪴':'📸'}</div>
           <div style={{fontWeight:500,color:'#1C1A17',marginBottom:4}}>{isH?'Upload a photo of your potting mix':'Upload a soil photo'}</div>
-          <div style={{fontSize:13,color:'#6B6760'}}>{isH?'Include plant leaves if visible — helps detect deficiency symptoms':'30–60 cm from bare soil · include any visible plants'}</div>
+          <div style={{fontSize:13,color:'#6B6760'}}>{isH?'Include plant leaves if visible — helps detect deficiency symptoms':isTropical?'Include leaves and stem for best tropical crop analysis':'30–60 cm from bare soil · include any visible plants'}</div>
           <input ref={fRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleFile}/>
         </div>
         <div style={{display:'flex',gap:8,marginTop:'.75rem'}}>
@@ -591,6 +678,65 @@ function App(){
               <span style={{fontSize:12,color:'#6B6760'}}>Plant health:</span>
               <span className="badge" style={{background:HB[result.plant_symptoms.plant_health]||'#f5f5f5',color:HC[result.plant_symptoms.plant_health]||'#555'}}>{result.plant_symptoms.plant_health}</span>
             </div>
+          </div>
+        )}
+
+        {/* Pest detection */}
+        {result.pest_analysis&&(
+          <div className="card" style={{borderColor:result.pest_analysis.severity==='High'?'#fca5a5':result.pest_analysis.severity==='Moderate'?'#fcd96a':undefined}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+              <div className="cl" style={{margin:0}}>🐛 Pest & disease scan</div>
+              <span style={{fontSize:11,borderRadius:20,padding:'2px 9px',fontWeight:600,background:result.pest_analysis.detected?{High:'#FFF5F5',Moderate:'#FFF9E6',Low:'#FEF3E2',None:'#F0F7E8'}[result.pest_analysis.severity]||'#F0F7E8':'#F0F7E8',color:result.pest_analysis.detected?{High:'#B91C1C',Moderate:'#92680A',Low:'#C87B00',None:'#2D5016'}[result.pest_analysis.severity]||'#2D5016':'#2D5016',border:`1px solid ${result.pest_analysis.detected?{High:'#fca5a5',Moderate:'#F5C842',Low:'#fcd96a',None:'#c8e4a0'}[result.pest_analysis.severity]||'#c8e4a0':'#c8e4a0'}`}}>{result.pest_analysis.detected?result.pest_analysis.severity+' risk':'✓ No pests detected'}</span>
+            </div>
+            {result.pest_analysis.detected?(
+              <>
+                {result.pest_analysis.likely_pests?.length>0&&(
+                  <div style={{marginBottom:12}}>
+                    <div style={{fontSize:12,color:'#6B6760',marginBottom:6,fontWeight:500,textTransform:'uppercase',letterSpacing:'.06em'}}>Suspected pests</div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                      {result.pest_analysis.likely_pests.map((p,i)=><span key={i} style={{fontSize:13,background:'#FFF5F5',color:'#B91C1C',borderRadius:20,padding:'3px 11px',border:'1px solid #fca5a5',fontWeight:500}}>{p}</span>)}
+                    </div>
+                  </div>
+                )}
+                {result.pest_analysis.signs?.length>0&&(
+                  <div style={{marginBottom:12}}>
+                    <div style={{fontSize:12,color:'#6B6760',marginBottom:5,fontWeight:500,textTransform:'uppercase',letterSpacing:'.06em'}}>Signs observed</div>
+                    <ul style={{paddingLeft:16,margin:0}}>
+                      {result.pest_analysis.signs.map((s,i)=><li key={i} style={{fontSize:13,color:'#1C1A17',lineHeight:1.6}}>{s}</li>)}
+                    </ul>
+                  </div>
+                )}
+                {result.pest_analysis.affected_area&&<div style={{fontSize:13,color:'#6B6760',marginBottom:12}}>📍 {result.pest_analysis.affected_area}</div>}
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
+                  <span style={{fontSize:12,color:'#6B6760'}}>Urgency:</span>
+                  <span style={{fontSize:12,fontWeight:600,color:{Monitor:'#3B6912','Act soon':'#C87B00','Treat immediately':'#B91C1C'}[result.pest_analysis.urgency]||'#555'}}>{result.pest_analysis.urgency==='Treat immediately'?'🚨':result.pest_analysis.urgency==='Act soon'?'⚠️':'👁'} {result.pest_analysis.urgency}</span>
+                </div>
+                <div style={{background:'#FFF5F5',border:'1px solid #fca5a5',borderRadius:10,padding:'10px 13px',marginBottom:10}}>
+                  <div style={{fontSize:12,fontWeight:500,color:'#B91C1C',marginBottom:3}}>💊 Treatment recommendation</div>
+                  <div style={{fontSize:13,color:'#B91C1C',lineHeight:1.5}}>{result.pest_analysis.treatment_rec}</div>
+                </div>
+                {result.pest_analysis.organic_option&&(
+                  <div style={{background:'#F0F7E8',border:'1px solid #c8e4a0',borderRadius:10,padding:'10px 13px',marginBottom:10}}>
+                    <div style={{fontSize:12,fontWeight:500,color:'#2D5016',marginBottom:3}}>🌿 Organic alternative</div>
+                    <div style={{fontSize:13,color:'#2d5410',lineHeight:1.5}}>{result.pest_analysis.organic_option}</div>
+                  </div>
+                )}
+                {result.pest_analysis.prevention_tip&&(
+                  <div style={{fontSize:12,color:'#6B6760',lineHeight:1.5,borderTop:'1px solid #F1EDE6',paddingTop:10,marginTop:4}}>🛡 Prevention: {result.pest_analysis.prevention_tip}</div>
+                )}
+              </>
+            ):(
+              <div style={{display:'flex',alignItems:'center',gap:12,padding:'6px 0'}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'#F0F7E8',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>✅</div>
+                <div>
+                  <div style={{fontSize:13,fontWeight:500,color:'#2D5016'}}>No visible pest activity detected</div>
+                  <div style={{fontSize:12,color:'#6B6760',marginTop:2}}>Soil surface and plant appear healthy. Continue regular monitoring.</div>
+                </div>
+              </div>
+            )}
+            {result.pest_analysis.prevention_tip&&!result.pest_analysis.detected&&(
+              <div style={{fontSize:12,color:'#6B6760',lineHeight:1.5,borderTop:'1px solid #F1EDE6',paddingTop:10,marginTop:10}}>🛡 Prevention tip: {result.pest_analysis.prevention_tip}</div>
+            )}
           </div>
         )}
 
