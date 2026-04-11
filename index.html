@@ -360,6 +360,10 @@ function App(){
 
   useEffect(()=>()=>stopCam(),[]);
 
+  // Derived state — computed at App level so all sub-components can access
+  const isH=HOUSE.some(h=>h.id===crop);
+  const isTropical=cropCat==='carib';
+
   const stopCam=useCallback(()=>{stRef.current?.getTracks().forEach(t=>t.stop());stRef.current=null;setCam(false);},[]);
   const saveH=async h=>{setHist(h);try{await db.set('h',JSON.stringify(h));}catch{}};
   const saveS=async s=>{setSched(s);try{await db.set('s',JSON.stringify(s));}catch{}};
@@ -387,8 +391,6 @@ function App(){
   const analyze=async()=>{
     if(!b64)return;setBusy(true);setErr(null);
     const ci=crop?ALL.find(c=>c.id===crop):null;
-    const isH=HOUSE.some(h=>h.id===crop);
-  const isTropical=cropCat==='carib';
     try{
       const res=await fetch(PROXY_URL,{
         method:'POST',headers:{'Content-Type':'application/json'},
@@ -452,8 +454,7 @@ function App(){
   };
 
   const makeReport=()=>{
-    if(!result)return'';const ci=crop?ALL.find(x=>x.id===crop):null;const isH=HOUSE.some(h=>h.id===crop);
-    const fit=cropFit(result);const ft={ideal:`IDEAL for ${ci?.n}`,close:`BORDERLINE for ${ci?.n}`,off:`OUT OF RANGE for ${ci?.n}`}[fit]||'';
+    if(!result)return'';const ci=crop?ALL.find(x=>x.id===crop):null;    const fit=cropFit(result);const ft={ideal:`IDEAL for ${ci?.n}`,close:`BORDERLINE for ${ci?.n}`,off:`OUT OF RANGE for ${ci?.n}`}[fit]||'';
     const n=result.nutrients;const ps=result.plant_symptoms;
     const labStr=Object.entries({n:'N',p:'P',k:'K',ph:'pH',om:'OM%'}).filter(([key])=>labVals[key]).map(([key,lbl])=>`${lbl}: ${labVals[key]}${key==='om'?'%':key==='ph'?'':' ppm'}`).join(', ');
     return `SOILSENSE MOISTURE & NUTRIENT REPORT\nGenerated: ${new Date().toLocaleString()}\n${'─'.repeat(42)}\nLocation:   ${field||'Not specified'}\nGPS:        ${gps?gps.lat+', '+gps.lng:'Not tagged'}\nPlant:      ${ci?ci.n+(isH?' (houseplant)':' (farm crop)'):'Not specified'}\n\nMOISTURE\nLevel:      ${result.moisture_percent}%\nStatus:     ${result.status}\n${ci?`Optimal:    ${ci.l}\nPlant fit:  ${ft}\n`:''}Confidence: ${result.confidence}\nVisual cue: ${result.visual_cue}\n\n${'─'.repeat(42)}\nNUTRIENT ANALYSIS (AI visual estimate)\nNitrogen:   ${n?.nitrogen?.level||'—'} (${n?.nitrogen?.score||'—'}/100) — ${n?.nitrogen?.indicator||''}\nPhosphorus: ${n?.phosphorus?.level||'—'} (${n?.phosphorus?.score||'—'}/100) — ${n?.phosphorus?.indicator||''}\nPotassium:  ${n?.potassium?.level||'—'} (${n?.potassium?.score||'—'}/100) — ${n?.potassium?.indicator||''}\nOrg. matter:${n?.organic_matter?.level||'—'} (${n?.organic_matter?.score||'—'}/100)\nSoil health:${n?.overall_health||'—'} (${n?.health_score||'—'}/100)\n${labStr?'Lab results: '+labStr+'\n':''}\nFERTILIZER\n${result.fertilizer_rec||'—'}\n\n${'─'.repeat(42)}\nPLANT SYMPTOMS\n${ps?.detected?'Detected: '+(ps.symptoms?.join(', ')||'—')+'\nLikely deficiency: '+ps.likely_deficiency+'\nPlant health: '+ps.plant_health:'No plant visible / no symptoms detected'}\n\n${'─'.repeat(42)}\n${isH?'REPOTTING / HEALTH':'PLANTING SEEDLINGS'}\n${result.seedling_rec}\n\nWATERING\n${result.watering_rec}\n\nCARE TIP\n${result.tip}\n\nNOTE: ${result.nutrient_disclaimer||'Nutrient values are AI visual estimates — confirm with a soil test kit.'}\n${'─'.repeat(42)}\nSoilSense AI`;
@@ -467,8 +468,7 @@ function App(){
   const overdue=useMemo(()=>{const n=dayStart();return sched.filter(s=>!s.done&&new Date(s.date)<n);},[sched]);
 
   // curList handled inline via CROP_MAP
-  const isH=HOUSE.some(h=>h.id===crop);
-  const stepIdx={setup:0,capture:1,results:2,report:3}[step]||0;
+    const stepIdx={setup:0,capture:1,results:2,report:3}[step]||0;
 
   // ── HOME ──
   const Home=()=>{
