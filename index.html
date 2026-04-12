@@ -138,12 +138,23 @@ const {useState,useRef,useEffect,useCallback,useMemo}=React;
 
 // ── CONFIG — replace with your Cloudflare Worker URL ──
 const PROXY_URL='https://summer-dawn-5be5.kjellow.workers.dev';
+const STRIPE_MONTHLY_URL='YOUR_STRIPE_MONTHLY_LINK'; // e.g. https://buy.stripe.com/xxx
+const STRIPE_ANNUAL_URL='YOUR_STRIPE_ANNUAL_LINK';   // e.g. https://buy.stripe.com/yyy
+const FREE_SCAN_LIMIT=10;
 
 // ── Storage ──
 const db={
   get:async k=>{try{const v=localStorage.getItem('ss_'+k);return v?{value:v}:null;}catch{return null;}},
   set:async(k,v)=>{try{localStorage.setItem('ss_'+k,v);}catch{}}
 };
+
+function getDeviceId(){
+  let id=localStorage.getItem('ss_device_id');
+  if(!id){id='dev_'+Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem('ss_device_id',id);}
+  return id;
+}
+function getLicenseKey(){return localStorage.getItem('ss_license_key')||'';}
+function setLicenseKey(k){localStorage.setItem('ss_license_key',k);}
 
 // ── Plant data ──
 // ── Plant library ──
@@ -336,8 +347,16 @@ function App(){
   const [dueBanner,setDueBanner]=useState(null);
   const [copied,setCopied]=useState(false);
   const [confirmClear,setConfirmClear]=useState(false);
+  const [showOnboard,setShowOnboard]=useState(false);
   const [showLabForm,setShowLabForm]=useState(false);
   const [labVals,setLabVals]=useState({});
+  const [isPro,setIsPro]=useState(false);
+  const [scansUsed,setScansUsed]=useState(0);
+  const [showPaywall,setShowPaywall]=useState(false);
+  const [showLicenseInput,setShowLicenseInput]=useState(false);
+  const [licenseInput,setLicenseInput]=useState('');
+  const [licenseMsg,setLicenseMsg]=useState('');
+  const [licenseLoading,setLicenseLoading]=useState(false);
 
   const fRef=useRef(null);const f2Ref=useRef(null);
   const vidRef=useRef(null);const canRef=useRef(null);const stRef=useRef(null);
@@ -349,6 +368,16 @@ function App(){
       try{const r=await db.get('s');if(r)setSched(JSON.parse(r.value));}catch{}
       try{const r=await db.get('f');if(r)setField(r.value);}catch{}
       setLoaded(true);
+      // Show onboarding on first visit
+      if(!localStorage.getItem('ss_onboarded')){setShowOnboard(true);}
+      // Load subscription status
+      const storedKey=getLicenseKey();
+      if(storedKey){setIsPro(true);}
+      // Fetch live scan count from worker
+      try{
+        const r=await fetch(PROXY_URL.replace('/v1/messages','')+'/scan-count',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({device_id:getDeviceId()})}).catch(()=>null);
+        if(r&&r.ok){const d=await r.json();setScansUsed(d.scans_used||0);if(d.is_pro)setIsPro(true);}
+      }catch{}
     })();
   },[]);
 
@@ -392,24 +421,39 @@ function App(){
     if(!b64)return;setBusy(true);setErr(null);
     const ci=crop?ALL.find(c=>c.id===crop):null;
     try{
+      // Gate free tier
+      if(!isPro&&scansUsed>=FREE_SCAN_LIMIT){setShowPaywall(true);setBusy(false);return;}
       const res=await fetch(PROXY_URL,{
-        method:'POST',headers:{'Content-Type':'application/json'},
+        method:'POST',headers:{'Content-Type':'application/json','x-device-id':getDeviceId(),'x-license-key':getLicenseKey()},
         body:JSON.stringify({
           model:'claude-sonnet-4-20250514',max_tokens:1500,
           system:`You are an expert agricultural soil scientist, tropical agronomist, plant pathologist, and integrated pest management (IPM) specialist with deep knowledge of Caribbean and tropical crops including banana, plantain, scotch bonnet pepper, callaloo, dasheen, ackee, breadfruit, sugarcane, cassava, and yam. Analyze the soil or potting mix AND any visible plants, leaves, and soil surface in the image — looking carefully for any signs of pest infestation including visible insects, larvae, grubs, fungal growth, tunneling, webbing, mounding, or plant symptoms that suggest soil pest activity.${ci?` Plant: ${ci.n} (${isH?'houseplant':'farm crop'}). Optimal moisture: ${ci.l}.`:''} Respond ONLY with valid JSON, no markdown, no trailing commas: {"moisture_percent":<0-100>,"status":"Very Dry"|"Dry"|"Optimal"|"Moist"|"Wet"|"Saturated","seedling_ready":true|false,"watering_needed":true|false,"seedling_rec":"<one sentence>","watering_rec":"<one sentence tailored to plant type>","tip":"<one practical care tip>","confidence":"Low"|"Medium"|"High","visual_cue":"<brief visual description>","nutrients":{"nitrogen":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis for this estimate>"},"phosphorus":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis>"},"potassium":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis>"},"organic_matter":{"level":"Low"|"Moderate"|"High","score":<0-100>,"indicator":"<visual basis>"},"overall_health":"Poor"|"Fair"|"Good"|"Excellent","health_score":<0-100>},"plant_symptoms":{"detected":true|false,"symptoms":["<observed symptom>"],"likely_deficiency":"Nitrogen"|"Phosphorus"|"Potassium"|"Iron"|"Magnesium"|"Calcium"|"None detected","plant_health":"Poor"|"Fair"|"Good"|"Excellent"},"fertilizer_rec":"<one specific fertilizer recommendation based on deficiencies>","nutrient_disclaimer":"Visual AI estimate only — confirm with a soil test kit for precise values","pest_analysis":{"detected":true|false,"signs":["<observed sign 1>","<observed sign 2>"],"likely_pests":["<pest name>"],"severity":"None"|"Low"|"Moderate"|"High","affected_area":"<brief description of where pests observed>","treatment_rec":"<one specific chemical or integrated treatment recommendation>","organic_option":"<one organic or natural treatment alternative>","urgency":"Monitor"|"Act soon"|"Treat immediately","prevention_tip":"<one prevention tip tailored to the plant and environment>"}}`,
           messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:'Analyze the soil moisture, nutrients, and scan carefully for any pest activity. Look for visible insects, larvae, grubs, webbing, mounding, tunneling, fungal growth, or any plant symptoms suggesting soil pest infestation. If plant leaves or stems are visible, assess health, deficiency symptoms, and any pest damage.'}]}]
         })
       });
+      if(res.status===402){setShowPaywall(true);setBusy(false);return;}
       if(!res.ok){const e=await res.json().catch(()=>({}));setErr('API error: '+(e.error?.message||res.statusText));setBusy(false);return;}
       const data=await res.json();
       const txt=data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim();
       const p=JSON.parse(txt);setResult(p);setShowLabForm(false);setLabVals({});
+      if(!isPro){const nc=scansUsed+1;setScansUsed(nc);if(nc>=FREE_SCAN_LIMIT)setShowPaywall(true);}
       const days=ci?nwd(crop,p.status):3;
       setSdDate(toISO(addDays(new Date(),days)));
       setSdNote(`${ci?ci.n+' — ':''}${p.status.toLowerCase()}${field?' ('+field+')':''}`);
       const entry={id:Date.now(),date:new Date().toISOString(),crop,cropInfo:ci,isHouse:isH,fieldName:field||null,coords:gps||null,image,result:p};
       await saveH([entry,...hist].slice(0,50));setStep('results');
-    }catch(ex){setErr('Analysis failed — '+ex.message);}
+    }catch(ex){
+      const msg=ex.message||'';
+      if(msg.includes('Failed to fetch')||msg.includes('NetworkError')||msg.includes('network')){
+        setErr('network');
+      } else if(msg.includes('SyntaxError')||msg.includes('JSON')){
+        setErr('parse');
+      } else if(msg.includes('timeout')||msg.includes('Timeout')){
+        setErr('timeout');
+      } else {
+        setErr('unknown:'+msg);
+      }
+    }
     setBusy(false);
   };
 
@@ -461,6 +505,24 @@ function App(){
   };
 
   const copyRep=async()=>{try{await navigator.clipboard.writeText(makeReport());setCopied(true);setTimeout(()=>setCopied(false),2500);}catch{}};
+  const validateLicense=async()=>{
+    if(!licenseInput.trim()){setLicenseMsg('Please enter your license key.');return;}
+    setLicenseLoading(true);setLicenseMsg('');
+    try{
+      const r=await fetch(PROXY_URL.replace('/v1/messages','')+'/validate-license',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({license_key:licenseInput.trim().toUpperCase(),device_id:getDeviceId()})
+      });
+      const d=await r.json();
+      if(d.valid){
+        setLicenseKey(licenseInput.trim().toUpperCase());
+        setIsPro(true);setShowPaywall(false);setShowLicenseInput(false);
+        setLicenseMsg('');setLicenseInput('');
+      }else{setLicenseMsg(d.error||'Invalid license key. Please check and try again.');}
+    }catch{setLicenseMsg('Could not validate — check your connection and try again.');}
+    setLicenseLoading(false);
+  };
+
   const reset=()=>{setStep('setup');setImage(null);setB64(null);setResult(null);setErr(null);setShowAS(false);setShowLabForm(false);setLabVals({});stopCam();};
 
   const fields=useMemo(()=>{const g={};hist.forEach(h=>{const k=h.fieldName||'(Untagged)';if(!g[k])g[k]={name:k,coords:h.coords,readings:[]};g[k].readings.push(h);});return Object.values(g).sort((a,b)=>new Date(b.readings[0].date)-new Date(a.readings[0].date));},[hist]);
@@ -494,11 +556,26 @@ function App(){
           <button className="btn bs bw" style={{marginTop:12}} onClick={()=>{reset();setTab('analyze');}}>🔬 New reading</button>
         </div>
       ):(
-        <div className="card" style={{textAlign:'center',padding:'1.8rem 1.2rem',background:'#F0F7E8',borderColor:'#c8e4a0'}}>
-          <div style={{fontSize:44,marginBottom:10}}>🌱</div>
-          <div style={{fontFamily:'Playfair Display,serif',fontSize:20,color:'#2D5016',marginBottom:6}}>Welcome to SoilSense</div>
-          <div style={{fontSize:13,color:'#6B6760',marginBottom:16,lineHeight:1.6}}>Point your camera at soil — farm field or potted plant — for an instant AI moisture and nutrient reading with personalised care advice.</div>
-          <button className="btn bg bw" onClick={()=>{reset();setTab('analyze');}}>📸 Take your first reading</button>
+        <div style={{background:'linear-gradient(160deg,#1a2e0b 0%,#2D5016 100%)',borderRadius:16,padding:'1.5rem',marginBottom:'.85rem',position:'relative',overflow:'hidden'}}>
+          <div style={{position:'absolute',right:-20,top:-20,width:140,height:140,borderRadius:'50%',background:'rgba(111,168,50,.12)'}}/>
+          <div style={{position:'absolute',right:20,bottom:-30,width:90,height:90,borderRadius:'50%',background:'rgba(111,168,50,.08)'}}/>
+          <div style={{position:'relative'}}>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+              <div style={{width:44,height:44,borderRadius:11,background:'rgba(255,255,255,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>🌱</div>
+              <div>
+                <div style={{fontFamily:'Playfair Display,serif',fontSize:20,color:'#fff',lineHeight:1.1}}>SoilSense</div>
+                <div style={{fontSize:11,color:'#a8c87a'}}>AI Soil Analyzer</div>
+              </div>
+            </div>
+            <div style={{fontSize:13,color:'#c8e8a0',lineHeight:1.6,marginBottom:14}}>Point your camera at soil to get instant moisture, nutrient, and pest analysis — tailored to your crops.</div>
+            <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
+              {['🚜 Farmers','🌴 Caribbean growers','🏡 Gardeners','🪴 Plant lovers'].map(t=><span key={t} style={{fontSize:11,background:'rgba(255,255,255,.1)',color:'#d4edaa',borderRadius:20,padding:'3px 10px',border:'1px solid rgba(255,255,255,.15)'}}>{t}</span>)}
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              <button style={{flex:1,background:'#6FA832',color:'#fff',border:'none',borderRadius:10,padding:'11px',fontFamily:'DM Sans,sans-serif',fontSize:14,fontWeight:600,cursor:'pointer'}} onClick={()=>{reset();setTab('analyze');}}>📸 Start scanning</button>
+              <button style={{background:'rgba(255,255,255,.12)',color:'#d4edaa',border:'1px solid rgba(255,255,255,.2)',borderRadius:10,padding:'11px 14px',fontFamily:'DM Sans,sans-serif',fontSize:13,cursor:'pointer'}} onClick={()=>setShowOnboard(true)}>ℹ️</button>
+            </div>
+          </div>
         </div>
       )}
       <div className="mets">
@@ -604,7 +681,32 @@ function App(){
 
       {cam&&<div className="card" style={{padding:0,overflow:'hidden'}}><video ref={vidRef} autoPlay playsInline muted/><canvas ref={canRef}/><div style={{display:'flex',gap:8,padding:'.75rem'}}><button className="btn bgh" style={{flexShrink:0}} onClick={stopCam}>✕ Cancel</button><button className="btn bg" style={{flex:1}} onClick={capturePhoto}>📸 Capture</button></div></div>}
       {image&&!cam&&<div className="card" style={{padding:0,overflow:'hidden'}}><img src={image} style={{width:'100%',maxHeight:240,objectFit:'cover',display:'block'}} alt="Soil sample"/><div style={{display:'flex',gap:8,padding:'.75rem'}}><button className="btn bgh" style={{flexShrink:0}} onClick={reset}>🔄 Retake</button><button className="btn bg" style={{flex:1}} onClick={analyze} disabled={busy}>{busy?<><div className="spinner"/>Analyzing soil &amp; nutrients...</>:`🔬 Analyze soil & nutrients`}</button></div></div>}
-      {err&&<div className="errbox">{err}</div>}
+      {err&&(()=>{
+        const errType=err.startsWith('unknown:')?'unknown':err;
+        const errMsgs={
+          network:{icon:'📡',title:'Connection problem',msg:'Could not reach the server. Check your internet connection and try again.',actions:[{label:'🔄 Retry scan',fn:()=>{setErr(null);analyze();}},{label:'📁 Upload photo instead',fn:()=>{setErr(null);f2Ref.current.click();}}]},
+          parse:{icon:'🔍',title:'Could not read the photo',msg:'The AI had trouble reading your image. A clearer, closer photo of bare soil usually works best.',actions:[{label:'📸 Retake photo',fn:()=>{setErr(null);reset();}},{label:'📁 Upload a different photo',fn:()=>{setErr(null);f2Ref.current.click();}}]},
+          timeout:{icon:'⏱',title:'Request timed out',msg:'The analysis took too long. This can happen with large photos or a slow connection.',actions:[{label:'🔄 Try again',fn:()=>{setErr(null);analyze();}},{label:'📸 Take a new photo',fn:()=>{setErr(null);reset();}}]},
+          unknown:{icon:'⚠️',title:'Something went wrong',msg:'An unexpected error occurred. Try retaking the photo or check that your app is up to date.',actions:[{label:'🔄 Try again',fn:()=>{setErr(null);analyze();}},{label:'📸 Start over',fn:()=>{setErr(null);reset();}},{label:'📁 Upload a photo',fn:()=>{setErr(null);f2Ref.current.click();}}]},
+        };
+        const e=errMsgs[errType]||errMsgs.unknown;
+        return(
+          <div style={{background:'#FFF5F5',border:'1px solid #fecaca',borderRadius:14,padding:'1rem 1.1rem',marginBottom:'.85rem'}}>
+            <div style={{display:'flex',alignItems:'flex-start',gap:10,marginBottom:10}}>
+              <span style={{fontSize:22,flexShrink:0}}>{e.icon}</span>
+              <div>
+                <div style={{fontSize:14,fontWeight:600,color:'#B91C1C',marginBottom:3}}>{e.title}</div>
+                <div style={{fontSize:13,color:'#7f1d1d',lineHeight:1.5}}>{e.msg}</div>
+              </div>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:7}}>
+              {e.actions.map((a,i)=>(
+                <button key={i} style={{background:i===0?'#B91C1C':'transparent',color:i===0?'#fff':'#B91C1C',border:'1px solid #fca5a5',borderRadius:9,padding:'9px 14px',fontFamily:'DM Sans,sans-serif',fontSize:13,fontWeight:500,cursor:'pointer',textAlign:'left'}} onClick={a.fn}>{a.label}</button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {result&&step==='results'&&(<>
         {/* Moisture */}
@@ -632,7 +734,7 @@ function App(){
         </div>
 
         {/* Nutrient analysis */}
-        {result.nutrients&&(
+        {result.nutrients&&!result.pro_features_locked&&(
           <div className="card">
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
               <div className="cl" style={{margin:0}}>Nutrient analysis</div>
@@ -682,7 +784,7 @@ function App(){
         )}
 
         {/* Pest detection */}
-        {result.pest_analysis&&(
+        {result.pest_analysis&&!result.pro_features_locked&&(
           <div className="card" style={{borderColor:result.pest_analysis.severity==='High'?'#fca5a5':result.pest_analysis.severity==='Moderate'?'#fcd96a':undefined}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
               <div className="cl" style={{margin:0}}>🐛 Pest & disease scan</div>
@@ -737,6 +839,18 @@ function App(){
             {result.pest_analysis.prevention_tip&&!result.pest_analysis.detected&&(
               <div style={{fontSize:12,color:'#6B6760',lineHeight:1.5,borderTop:'1px solid #F1EDE6',paddingTop:10,marginTop:10}}>🛡 Prevention tip: {result.pest_analysis.prevention_tip}</div>
             )}
+          </div>
+        )}
+
+        {/* Pro upsell for free users */}
+        {result.pro_features_locked&&(
+          <div style={{background:'linear-gradient(135deg,#1a2e0b 0%,#2D5016 100%)',borderRadius:14,padding:'1.2rem',marginBottom:'.85rem',textAlign:'center',border:'1px solid #3B6912'}}>
+            <div style={{fontSize:28,marginBottom:8}}>🌿</div>
+            <div style={{fontFamily:'Playfair Display,serif',fontSize:17,color:'#d4edaa',marginBottom:6}}>Unlock the full analysis</div>
+            <div style={{fontSize:13,color:'#a8c87a',marginBottom:14,lineHeight:1.6}}>Upgrade to Pro for nutrient levels, pest detection, weather integration, and unlimited scans.</div>
+            <button style={{background:'#6FA832',color:'#fff',border:'none',borderRadius:10,padding:'11px 24px',fontFamily:'DM Sans,sans-serif',fontSize:14,fontWeight:600,cursor:'pointer',width:'100%'}} onClick={()=>setShowPaywall(true)}>
+              Upgrade to Pro — from $3.99/month
+            </button>
           </div>
         )}
 
@@ -825,17 +939,25 @@ function App(){
   // ── HISTORY ──
   const History=()=>{
     if(!loaded)return<div style={{textAlign:'center',padding:'2rem',color:'#6B6760'}}>Loading…</div>;
+    const [histFilter,setHistFilter]=useState('all');
     const Readings=()=>{
       if(!hist.length)return<div className="empty"><div style={{fontSize:38,marginBottom:10}}>📊</div><div style={{fontSize:15,fontWeight:500,color:'#1C1A17',marginBottom:5}}>No readings yet</div><div style={{fontSize:13}}>Analyze your first soil sample to start your history log.</div></div>;
       const recent=hist.slice(0,10).reverse();const avg=Math.round(recent.reduce((s,h)=>s+h.result.moisture_percent,0)/recent.length);
+      const last10=hist.slice(0,10);
       return(<>
+        {/* Filter tabs */}
+        <div style={{display:'flex',gap:0,background:'#F8F5F0',borderRadius:9,padding:3,marginBottom:'.85rem',border:'1px solid #E5E2DC'}}>
+          {[['recent','🕐 Last 10'],['all','📋 All ('+hist.length+')']].map(([v,l])=>(
+            <button key={v} onClick={()=>setHistFilter(v)} style={{flex:1,padding:'7px',textAlign:'center',borderRadius:7,border:'none',cursor:'pointer',fontFamily:'DM Sans,sans-serif',fontSize:13,fontWeight:histFilter===v?500:400,background:histFilter===v?'#fff':'transparent',color:histFilter===v?'#3B6912':'#6B6760',transition:'all .15s',boxShadow:histFilter===v?'0 1px 3px rgba(0,0,0,.08)':'none'}}>{l}</button>
+          ))}
+        </div>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'.75rem'}}>
-          <div style={{fontSize:13,color:'#6B6760'}}>{hist.length} reading{hist.length!==1?'s':''}</div>
+          <div style={{fontSize:13,color:'#6B6760'}}>{histFilter==='recent'?`Showing ${Math.min(10,hist.length)} most recent`:hist.length+' total reading'+(hist.length!==1?'s':'')}</div>
           {!confirmClear?<button className="btn bgh" style={{padding:'5px 11px',fontSize:12}} onClick={()=>setConfirmClear(true)}>🗑 Clear all</button>:<div style={{display:'flex',gap:6}}><button className="btn bgh" style={{padding:'5px 10px',fontSize:12}} onClick={()=>setConfirmClear(false)}>Cancel</button><button className="btn" style={{padding:'5px 10px',fontSize:12,background:'#B91C1C',color:'#fff',border:'none',borderRadius:8}} onClick={()=>{saveH([]);setConfirmClear(false);}}>Confirm</button></div>}
         </div>
         {hist.length>=2&&<div className="card"><div className="cl">Moisture trend (last {recent.length})</div><div style={{display:'flex',gap:3,alignItems:'flex-end',height:52,marginBottom:6}}>{recent.map((h,i)=><div key={i} title={`${h.result.moisture_percent}%`} style={{flex:1,background:MC(h.result.moisture_percent),borderRadius:'3px 3px 0 0',height:`${h.result.moisture_percent*.52}%`,minHeight:3}}/>)}</div><div style={{fontSize:12,color:'#6B6760'}}>Average: <strong style={{color:'#1C1A17'}}>{avg}%</strong></div></div>}
         <div className="card" style={{padding:'0 1.1rem'}}>
-          {hist.map((h,i)=>(
+          {(histFilter==='recent'?last10:hist).map((h,i)=>(
             <div key={h.id} className="rrow" style={{borderBottom:i<hist.length-1?'1px solid #F1EDE6':'none'}}>
               {h.image?<img src={h.image} className="rthumb" alt=""/>:<div className="rph">{h.cropInfo?h.cropInfo.e:'🌱'}</div>}
               <div style={{flex:1,minWidth:0}}>
@@ -917,11 +1039,155 @@ function App(){
 
   return(
     <div className="app">
-      {dueBanner&&dueBanner.length>0&&<div style={{background:'#FFF9E6',borderBottom:'1px solid #F5C842',padding:'10px 1rem',display:'flex',alignItems:'center',gap:10}}><span style={{fontSize:18,flexShrink:0}}>⏰</span><div style={{flex:1,fontSize:13,color:'#92680A',lineHeight:1.4}}><strong>{dueBanner.length} watering event{dueBanner.length!==1?'s':''} due</strong>{dueBanner.filter(d=>d.fieldName).length>0&&' — '+dueBanner.filter(d=>d.fieldName).map(d=>d.fieldName).join(', ')}</div><button onClick={()=>{setTab('schedule');setDueBanner(null);}} style={{border:'none',background:'#F59E0B',color:'#fff',borderRadius:7,padding:'5px 11px',cursor:'pointer',fontSize:12,fontWeight:500,flexShrink:0}}>View</button><button onClick={()=>setDueBanner(null)} style={{border:'none',background:'transparent',cursor:'pointer',fontSize:20,color:'#92680A',padding:'0 2px',lineHeight:1,flexShrink:0}}>×</button></div>}
+      {/* Onboarding Modal */}
+      {showOnboard&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(15,26,8,.92)',zIndex:300,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'0'}}>
+          <div style={{background:'#fff',borderRadius:'24px 24px 0 0',padding:'1.75rem 1.5rem 2rem',maxWidth:560,width:'100%',boxShadow:'0 -8px 40px rgba(0,0,0,.3)',maxHeight:'92vh',overflowY:'auto'}}>
+            {/* Header */}
+            <div style={{textAlign:'center',marginBottom:'1.5rem'}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,marginBottom:10}}>
+                <div style={{width:48,height:48,borderRadius:12,background:'#2D5016',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24}}>🌱</div>
+              </div>
+              <div style={{fontFamily:'Playfair Display,serif',fontSize:26,color:'#1C1A17',marginBottom:6,lineHeight:1.2}}>Welcome to SoilSense</div>
+              <div style={{fontSize:14,color:'#6B6760',lineHeight:1.6}}>The AI soil analyzer built for every farmer, gardener, and plant lover</div>
+            </div>
+
+            {/* Who it's for */}
+            <div style={{marginBottom:'1.25rem'}}>
+              <div style={{fontSize:11,fontWeight:600,color:'#6B6760',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:10}}>Who SoilSense is for</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                {[
+                  {e:'🚜',t:'Commercial farmers',d:'Monitor multiple fields and track seasonal trends'},
+                  {e:'🌴',t:'Caribbean growers',d:'Optimised for banana, callaloo, scotch bonnet & more'},
+                  {e:'🏡',t:'Home gardeners',d:'Know exactly when to water your vegetables and herbs'},
+                  {e:'🪴',t:'Houseplant owners',d:'Keep orchids, monsteras and succulents thriving'},
+                ].map(item=>(
+                  <div key={item.t} style={{background:'#F8F5F0',borderRadius:12,padding:'12px 10px',border:'1px solid #E5E2DC'}}>
+                    <div style={{fontSize:22,marginBottom:5}}>{item.e}</div>
+                    <div style={{fontSize:12,fontWeight:600,color:'#1C1A17',marginBottom:2,lineHeight:1.3}}>{item.t}</div>
+                    <div style={{fontSize:11,color:'#6B6760',lineHeight:1.4}}>{item.d}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* What it does */}
+            <div style={{marginBottom:'1.25rem'}}>
+              <div style={{fontSize:11,fontWeight:600,color:'#6B6760',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:10}}>What SoilSense analyses</div>
+              <div style={{display:'flex',flexDirection:'column',gap:7}}>
+                {[
+                  {e:'💧',t:'Soil moisture',d:'Precise % reading with planting and watering advice'},
+                  {e:'🌿',t:'Nutrients (NPK)',d:'Nitrogen, Phosphorus, Potassium and organic matter levels'},
+                  {e:'🐛',t:'Pest & disease',d:'Visible infestations with chemical and organic treatments'},
+                  {e:'🌤',t:'Weather-aware advice',d:'Combines your soil reading with local rainfall data'},
+                ].map(item=>(
+                  <div key={item.t} style={{display:'flex',alignItems:'flex-start',gap:11}}>
+                    <div style={{width:36,height:36,borderRadius:9,background:'#F0F7E8',display:'flex',alignItems:'center',justifyContent:'center',fontSize:17,flexShrink:0}}>{item.e}</div>
+                    <div><div style={{fontSize:13,fontWeight:500,color:'#1C1A17',marginBottom:1}}>{item.t}</div><div style={{fontSize:12,color:'#6B6760',lineHeight:1.4}}>{item.d}</div></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* How to use */}
+            <div style={{background:'#F0F7E8',border:'1px solid #c8e4a0',borderRadius:12,padding:'1rem',marginBottom:'1.25rem'}}>
+              <div style={{fontSize:11,fontWeight:600,color:'#2D5016',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:8}}>How to get your first reading</div>
+              {[
+                {n:1,t:'Choose your crop (optional)',d:'Select from 84 plant types including Caribbean crops'},
+                {n:2,t:'Point your camera at the soil',d:'Hold your phone 30–60 cm above bare soil in good light'},
+                {n:3,t:'Tap Analyze',d:'AI reads moisture, nutrients and scans for pests in seconds'},
+              ].map(s=>(
+                <div key={s.n} style={{display:'flex',gap:10,marginBottom:s.n<3?8:0}}>
+                  <div style={{width:22,height:22,borderRadius:'50%',background:'#2D5016',color:'#fff',fontSize:11,fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{s.n}</div>
+                  <div><div style={{fontSize:13,fontWeight:500,color:'#1C1A17'}}>{s.t}</div><div style={{fontSize:12,color:'#3B6912',lineHeight:1.4}}>{s.d}</div></div>
+                </div>
+              ))}
+            </div>
+
+            {/* Free plan note */}
+            <div style={{background:'#FEF3E2',border:'1px solid #fcd96a',borderRadius:10,padding:'10px 13px',marginBottom:'1.25rem',fontSize:12,color:'#92680A',lineHeight:1.5}}>
+              <strong>Free plan includes {FREE_SCAN_LIMIT} scans per month</strong> with moisture analysis. Upgrade to Pro for nutrients, pest detection, weather, and unlimited scans.
+            </div>
+
+            {/* CTA */}
+            <button style={{width:'100%',background:'#2D5016',color:'#fff',border:'none',borderRadius:12,padding:'15px',fontFamily:'DM Sans,sans-serif',fontSize:16,fontWeight:600,cursor:'pointer',marginBottom:10}} onClick={()=>{localStorage.setItem('ss_onboarded','1');setShowOnboard(false);setTab('analyze');reset();}}>
+              📸 Take your first reading
+            </button>
+            <button style={{width:'100%',background:'transparent',border:'none',color:'#6B6760',fontFamily:'DM Sans,sans-serif',fontSize:13,cursor:'pointer',padding:'4px'}} onClick={()=>{localStorage.setItem('ss_onboarded','1');setShowOnboard(false);}}>
+              Explore the app first
+            </button>
+          </div>
+        </div>
+      )}
+
+            {/* Paywall Modal */}
+      {showPaywall&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.65)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:'1.2rem'}}>
+          <div style={{background:'#fff',borderRadius:20,padding:'1.75rem 1.5rem',maxWidth:360,width:'100%',boxShadow:'0 24px 64px rgba(0,0,0,.3)'}}>
+            <div style={{textAlign:'center',marginBottom:'1.25rem'}}>
+              <div style={{fontSize:44,marginBottom:8}}>🌱</div>
+              <div style={{fontFamily:'Playfair Display,serif',fontSize:22,color:'#1C1A17',marginBottom:6}}>Upgrade to Pro</div>
+              <div style={{fontSize:14,color:'#6B6760',lineHeight:1.6}}>{isPro?'Your Pro subscription is active.':scansUsed>=FREE_SCAN_LIMIT?`You've used all ${FREE_SCAN_LIMIT} free scans this month. Upgrade to continue.`:`You've used ${scansUsed} of ${FREE_SCAN_LIMIT} free scans.`}</div>
+            </div>
+            {/* Feature comparison */}
+            <div style={{background:'#F8F5F0',borderRadius:12,padding:'1rem',marginBottom:'1rem'}}>
+              {[['💧 Moisture analysis','✓','✓'],['🌿 Nutrient analysis (NPK)','✗','✓'],['🐛 Pest & disease detection','✗','✓'],['🌤 Weather integration','✗','✓'],['📊 Field history & comparison','✗','✓'],['📋 Shareable reports','✗','✓'],['🌴 All 84 plant types','✗','✓']].map(([f,fr,pr])=>(
+                <div key={f} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'5px 0',borderBottom:'1px solid #F1EDE6',fontSize:13}}>
+                  <span style={{color:'#1C1A17'}}>{f}</span>
+                  <div style={{display:'flex',gap:24,flexShrink:0}}>
+                    <span style={{color:fr==='✓'?'#3B6912':'#B91C1C',fontWeight:600,width:20,textAlign:'center'}}>{fr}</span>
+                    <span style={{color:pr==='✓'?'#3B6912':'#B91C1C',fontWeight:600,width:20,textAlign:'center'}}>{pr}</span>
+                  </div>
+                </div>
+              ))}
+              <div style={{display:'flex',justifyContent:'flex-end',gap:24,padding:'6px 0 0',fontSize:11,color:'#6B6760',fontWeight:500}}>
+                <span style={{width:20,textAlign:'center'}}>Free</span>
+                <span style={{width:20,textAlign:'center',color:'#3B6912'}}>Pro</span>
+              </div>
+            </div>
+            {/* Pricing buttons */}
+            {!showLicenseInput?(
+              <>
+                <a href={STRIPE_ANNUAL_URL} target="_blank" rel="noopener" style={{display:'block',background:'#3B6912',color:'#fff',borderRadius:11,padding:'13px',textAlign:'center',fontFamily:'DM Sans,sans-serif',fontSize:15,fontWeight:600,textDecoration:'none',marginBottom:8}}>
+                  🌿 Go Pro — $29.99 / year
+                  <div style={{fontSize:11,fontWeight:400,opacity:.85,marginTop:2}}>Best value · Save 37% · Unlimited scans</div>
+                </a>
+                <a href={STRIPE_MONTHLY_URL} target="_blank" rel="noopener" style={{display:'block',background:'#F0F7E8',color:'#2D5016',border:'1px solid #c8e4a0',borderRadius:11,padding:'11px',textAlign:'center',fontFamily:'DM Sans,sans-serif',fontSize:14,fontWeight:500,textDecoration:'none',marginBottom:12}}>
+                  Monthly — $3.99 / month
+                </a>
+                <div style={{textAlign:'center',marginBottom:10}}>
+                  <button style={{background:'transparent',border:'none',color:'#6B6760',fontSize:13,cursor:'pointer',textDecoration:'underline',fontFamily:'DM Sans,sans-serif'}} onClick={()=>setShowLicenseInput(true)}>
+                    Already purchased? Enter license key
+                  </button>
+                </div>
+              </>
+            ):(
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:13,fontWeight:500,color:'#1C1A17',marginBottom:8}}>Enter your license key</div>
+                <input style={{width:'100%',padding:'10px 13px',border:'1px solid #E5E2DC',borderRadius:9,fontFamily:'DM Sans,sans-serif',fontSize:14,marginBottom:8,background:'#F8F5F0'}} placeholder="XXXX-XXXX-XXXX-XXXX" value={licenseInput} onChange={e=>setLicenseInput(e.target.value.toUpperCase())} onKeyDown={e=>e.key==='Enter'&&validateLicense()}/>
+                {licenseMsg&&<div style={{fontSize:12,color:licenseMsg.includes('success')||licenseMsg.includes('activated')?'#3B6912':'#B91C1C',marginBottom:8,lineHeight:1.4}}>{licenseMsg}</div>}
+                <div style={{display:'flex',gap:8}}>
+                  <button style={{flex:1,background:'transparent',border:'1px solid #E5E2DC',borderRadius:9,padding:'10px',fontFamily:'DM Sans,sans-serif',fontSize:13,color:'#6B6760',cursor:'pointer'}} onClick={()=>{setShowLicenseInput(false);setLicenseMsg('');}}>← Back</button>
+                  <button style={{flex:2,background:'#3B6912',color:'#fff',border:'none',borderRadius:9,padding:'10px',fontFamily:'DM Sans,sans-serif',fontSize:14,fontWeight:500,cursor:'pointer',opacity:licenseLoading?.6:1}} onClick={validateLicense} disabled={licenseLoading}>{licenseLoading?'Validating…':'Activate Pro'}</button>
+                </div>
+              </div>
+            )}
+            <button style={{width:'100%',background:'transparent',border:'none',color:'#9A9690',fontSize:13,cursor:'pointer',fontFamily:'DM Sans,sans-serif',padding:'4px'}} onClick={()=>{setShowPaywall(false);setShowLicenseInput(false);setLicenseMsg('');}}>
+              {scansUsed<FREE_SCAN_LIMIT?'Continue with free plan':'Maybe later'}
+            </button>
+          </div>
+        </div>
+      )}
+
+            {dueBanner&&dueBanner.length>0&&<div style={{background:'#FFF9E6',borderBottom:'1px solid #F5C842',padding:'10px 1rem',display:'flex',alignItems:'center',gap:10}}><span style={{fontSize:18,flexShrink:0}}>⏰</span><div style={{flex:1,fontSize:13,color:'#92680A',lineHeight:1.4}}><strong>{dueBanner.length} watering event{dueBanner.length!==1?'s':''} due</strong>{dueBanner.filter(d=>d.fieldName).length>0&&' — '+dueBanner.filter(d=>d.fieldName).map(d=>d.fieldName).join(', ')}</div><button onClick={()=>{setTab('schedule');setDueBanner(null);}} style={{border:'none',background:'#F59E0B',color:'#fff',borderRadius:7,padding:'5px 11px',cursor:'pointer',fontSize:12,fontWeight:500,flexShrink:0}}>View</button><button onClick={()=>setDueBanner(null)} style={{border:'none',background:'transparent',cursor:'pointer',fontSize:20,color:'#92680A',padding:'0 2px',lineHeight:1,flexShrink:0}}>×</button></div>}
       <div className="hdr">
         <div className="logo">🌱</div>
         <div><div className="hdr-name">SoilSense</div><div className="hdr-sub">Moisture · Nutrients · Plant health</div></div>
         <div style={{marginLeft:'auto',display:'flex',gap:6,alignItems:'center'}}>
+          {isPro
+            ?<span style={{fontSize:11,background:'#F0F7E8',color:'#2D5016',border:'1px solid #c8e4a0',borderRadius:20,padding:'3px 10px',fontWeight:600,cursor:'pointer'}} onClick={()=>setShowPaywall(true)}>⭐ Pro</span>
+            :<span style={{fontSize:11,background:'#F8F5F0',color:'#6B6760',border:'1px solid #E5E2DC',borderRadius:20,padding:'3px 10px',cursor:'pointer'}} onClick={()=>setShowPaywall(true)}>{scansUsed}/{FREE_SCAN_LIMIT} scans</span>
+          }
           {notifPerm==='granted'&&<span style={{fontSize:16}} title="Reminders on">🔔</span>}
           <button className="btn bs" style={{padding:'7px 12px',fontSize:13}} onClick={()=>{reset();setTab('analyze');}}>+ Scan</button>
         </div>
