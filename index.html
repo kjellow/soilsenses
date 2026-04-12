@@ -375,7 +375,8 @@ function App(){
       if(storedKey){setIsPro(true);}
       // Fetch live scan count from worker
       try{
-        const r=await fetch(PROXY_URL.replace('/v1/messages','')+'/scan-count',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({device_id:getDeviceId()})}).catch(()=>null);
+        const workerBase=PROXY_URL.includes('workers.dev')||PROXY_URL.includes('pages.dev')?PROXY_URL.split('/').slice(0,3).join('/'):PROXY_URL.replace('/v1/messages','');
+        const r=await fetch(workerBase+'/scan-count',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({device_id:getDeviceId()})}).catch(()=>null);
         if(r&&r.ok){const d=await r.json();setScansUsed(d.scans_used||0);if(d.is_pro)setIsPro(true);}
       }catch{}
     })();
@@ -424,15 +425,31 @@ function App(){
       // Gate free tier
       if(!isPro&&scansUsed>=FREE_SCAN_LIMIT){setShowPaywall(true);setBusy(false);return;}
       const res=await fetch(PROXY_URL,{
-        method:'POST',headers:{'Content-Type':'application/json','x-device-id':getDeviceId(),'x-license-key':getLicenseKey()},
+        method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
+          _device_id:getDeviceId(),_license_key:getLicenseKey(),
           model:'claude-sonnet-4-20250514',max_tokens:1500,
           system:`You are an expert agricultural soil scientist, tropical agronomist, plant pathologist, and integrated pest management (IPM) specialist with deep knowledge of Caribbean and tropical crops including banana, plantain, scotch bonnet pepper, callaloo, dasheen, ackee, breadfruit, sugarcane, cassava, and yam. Analyze the soil or potting mix AND any visible plants, leaves, and soil surface in the image — looking carefully for any signs of pest infestation including visible insects, larvae, grubs, fungal growth, tunneling, webbing, mounding, or plant symptoms that suggest soil pest activity.${ci?` Plant: ${ci.n} (${isH?'houseplant':'farm crop'}). Optimal moisture: ${ci.l}.`:''} Respond ONLY with valid JSON, no markdown, no trailing commas: {"moisture_percent":<0-100>,"status":"Very Dry"|"Dry"|"Optimal"|"Moist"|"Wet"|"Saturated","seedling_ready":true|false,"watering_needed":true|false,"seedling_rec":"<one sentence>","watering_rec":"<one sentence tailored to plant type>","tip":"<one practical care tip>","confidence":"Low"|"Medium"|"High","visual_cue":"<brief visual description>","nutrients":{"nitrogen":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis for this estimate>"},"phosphorus":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis>"},"potassium":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis>"},"organic_matter":{"level":"Low"|"Moderate"|"High","score":<0-100>,"indicator":"<visual basis>"},"overall_health":"Poor"|"Fair"|"Good"|"Excellent","health_score":<0-100>},"plant_symptoms":{"detected":true|false,"symptoms":["<observed symptom>"],"likely_deficiency":"Nitrogen"|"Phosphorus"|"Potassium"|"Iron"|"Magnesium"|"Calcium"|"None detected","plant_health":"Poor"|"Fair"|"Good"|"Excellent"},"fertilizer_rec":"<one specific fertilizer recommendation based on deficiencies>","nutrient_disclaimer":"Visual AI estimate only — confirm with a soil test kit for precise values","pest_analysis":{"detected":true|false,"signs":["<observed sign 1>","<observed sign 2>"],"likely_pests":["<pest name>"],"severity":"None"|"Low"|"Moderate"|"High","affected_area":"<brief description of where pests observed>","treatment_rec":"<one specific chemical or integrated treatment recommendation>","organic_option":"<one organic or natural treatment alternative>","urgency":"Monitor"|"Act soon"|"Treat immediately","prevention_tip":"<one prevention tip tailored to the plant and environment>"}}`,
           messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:'Analyze the soil moisture, nutrients, and scan carefully for any pest activity. Look for visible insects, larvae, grubs, webbing, mounding, tunneling, fungal growth, or any plant symptoms suggesting soil pest infestation. If plant leaves or stems are visible, assess health, deficiency symptoms, and any pest damage.'}]}]
         })
       });
       if(res.status===402){setShowPaywall(true);setBusy(false);return;}
-      if(!res.ok){const e=await res.json().catch(()=>({}));setErr('API error: '+(e.error?.message||res.statusText));setBusy(false);return;}
+      if(!res.ok){
+        const e=await res.json().catch(()=>({}));
+        const errMsg=e.error?.message||res.statusText||'';
+        if(res.status===401||errMsg.includes('API key')||errMsg.includes('auth')){
+          setErr('auth');
+        } else if(res.status===429||errMsg.includes('rate')){
+          setErr('rate');
+        } else if(res.status>=500){
+          setErr('server');
+        } else if(res.status===404){
+          setErr('url');
+        } else {
+          setErr('unknown:'+errMsg);
+        }
+        setBusy(false);return;
+      }
       const data=await res.json();
       const txt=data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim();
       const p=JSON.parse(txt);setResult(p);setShowLabForm(false);setLabVals({});
@@ -509,7 +526,8 @@ function App(){
     if(!licenseInput.trim()){setLicenseMsg('Please enter your license key.');return;}
     setLicenseLoading(true);setLicenseMsg('');
     try{
-      const r=await fetch(PROXY_URL.replace('/v1/messages','')+'/validate-license',{
+      const workerBase2=PROXY_URL.includes('workers.dev')||PROXY_URL.includes('pages.dev')?PROXY_URL.split('/').slice(0,3).join('/'):PROXY_URL.replace('/v1/messages','');
+      const r=await fetch(workerBase2+'/validate-license',{
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({license_key:licenseInput.trim().toUpperCase(),device_id:getDeviceId()})
       });
@@ -687,7 +705,11 @@ function App(){
           network:{icon:'📡',title:'Connection problem',msg:'Could not reach the server. Check your internet connection and try again.',actions:[{label:'🔄 Retry scan',fn:()=>{setErr(null);analyze();}},{label:'📁 Upload photo instead',fn:()=>{setErr(null);f2Ref.current.click();}}]},
           parse:{icon:'🔍',title:'Could not read the photo',msg:'The AI had trouble reading your image. A clearer, closer photo of bare soil usually works best.',actions:[{label:'📸 Retake photo',fn:()=>{setErr(null);reset();}},{label:'📁 Upload a different photo',fn:()=>{setErr(null);f2Ref.current.click();}}]},
           timeout:{icon:'⏱',title:'Request timed out',msg:'The analysis took too long. This can happen with large photos or a slow connection.',actions:[{label:'🔄 Try again',fn:()=>{setErr(null);analyze();}},{label:'📸 Take a new photo',fn:()=>{setErr(null);reset();}}]},
-          unknown:{icon:'⚠️',title:'Something went wrong',msg:'An unexpected error occurred. Try retaking the photo or check that your app is up to date.',actions:[{label:'🔄 Try again',fn:()=>{setErr(null);analyze();}},{label:'📸 Start over',fn:()=>{setErr(null);reset();}},{label:'📁 Upload a photo',fn:()=>{setErr(null);f2Ref.current.click();}}]},
+          auth:{icon:'🔑',title:'API key error',msg:'The app could not authenticate with the server. Please check your Worker URL is correctly set in the HTML file.',actions:[{label:'🔄 Try again',fn:()=>{setErr(null);analyze();}}]},
+          rate:{icon:'⏳',title:'Too many requests',msg:'You've sent too many scans in a short time. Wait a moment and try again.',actions:[{label:'🔄 Try again in a moment',fn:()=>{setErr(null);setTimeout(()=>analyze(),3000);}}]},
+          server:{icon:'🔧',title:'Server error',msg:'The proxy server encountered an error. This is usually temporary — please try again.',actions:[{label:'🔄 Try again',fn:()=>{setErr(null);analyze();}},{label:'📸 Retake photo',fn:()=>{setErr(null);reset();}}]},
+          url:{icon:'🔗',title:'Worker URL not found',msg:'The app cannot reach the proxy server. Make sure YOUR_WORKER_URL is replaced with your actual Cloudflare Worker URL in the HTML file.',actions:[{label:'🔄 Try again',fn:()=>{setErr(null);analyze();}}]},
+          unknown:{icon:'⚠️',title:'Something went wrong',msg:'An unexpected error occurred. Try retaking the photo — a clear, well-lit close-up of bare soil works best.',actions:[{label:'🔄 Try again',fn:()=>{setErr(null);analyze();}},{label:'📸 Start over',fn:()=>{setErr(null);reset();}},{label:'📁 Upload a photo',fn:()=>{setErr(null);f2Ref.current.click();}}]},
         };
         const e=errMsgs[errType]||errMsgs.unknown;
         return(
