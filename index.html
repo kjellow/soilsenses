@@ -141,6 +141,7 @@ const PROXY_URL='https://summer-dawn-5be5.kjellow.workers.dev';
 const STRIPE_MONTHLY_URL='YOUR_STRIPE_MONTHLY_LINK'; // e.g. https://buy.stripe.com/xxx
 const STRIPE_ANNUAL_URL='YOUR_STRIPE_ANNUAL_LINK';   // e.g. https://buy.stripe.com/yyy
 const FREE_SCAN_LIMIT=10;
+const FREE_HIST_LIMIT=5;
 
 // ── Storage ──
 const db={
@@ -348,6 +349,7 @@ function App(){
   const [copied,setCopied]=useState(false);
   const [confirmClear,setConfirmClear]=useState(false);
   const [showOnboard,setShowOnboard]=useState(false);
+  const [selectedReading,setSelectedReading]=useState(null);
   const [showLabForm,setShowLabForm]=useState(false);
   const [labVals,setLabVals]=useState({});
   const [isPro,setIsPro]=useState(false);
@@ -429,7 +431,7 @@ function App(){
         body:JSON.stringify({
           _device_id:getDeviceId(),_license_key:getLicenseKey(),
           model:'claude-sonnet-4-20250514',max_tokens:1500,
-          system:`You are an expert agricultural soil scientist, tropical agronomist, plant pathologist, and integrated pest management (IPM) specialist with deep knowledge of Caribbean and tropical crops including banana, plantain, scotch bonnet pepper, callaloo, dasheen, ackee, breadfruit, sugarcane, cassava, and yam. Analyze the soil or potting mix AND any visible plants, leaves, and soil surface in the image — looking carefully for any signs of pest infestation including visible insects, larvae, grubs, fungal growth, tunneling, webbing, mounding, or plant symptoms that suggest soil pest activity.${ci?` Plant: ${ci.n} (${isH?'houseplant':'farm crop'}). Optimal moisture: ${ci.l}.`:''} Respond ONLY with valid JSON, no markdown, no trailing commas: {"moisture_percent":<0-100>,"status":"Very Dry"|"Dry"|"Optimal"|"Moist"|"Wet"|"Saturated","seedling_ready":true|false,"watering_needed":true|false,"seedling_rec":"<one sentence>","watering_rec":"<one sentence tailored to plant type>","tip":"<one practical care tip>","confidence":"Low"|"Medium"|"High","visual_cue":"<brief visual description>","nutrients":{"nitrogen":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis for this estimate>"},"phosphorus":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis>"},"potassium":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis>"},"organic_matter":{"level":"Low"|"Moderate"|"High","score":<0-100>,"indicator":"<visual basis>"},"overall_health":"Poor"|"Fair"|"Good"|"Excellent","health_score":<0-100>},"plant_symptoms":{"detected":true|false,"symptoms":["<observed symptom>"],"likely_deficiency":"Nitrogen"|"Phosphorus"|"Potassium"|"Iron"|"Magnesium"|"Calcium"|"None detected","plant_health":"Poor"|"Fair"|"Good"|"Excellent"},"fertilizer_rec":"<one specific fertilizer recommendation based on deficiencies>","nutrient_disclaimer":"Visual AI estimate only — confirm with a soil test kit for precise values","pest_analysis":{"detected":true|false,"signs":["<observed sign 1>","<observed sign 2>"],"likely_pests":["<pest name>"],"severity":"None"|"Low"|"Moderate"|"High","affected_area":"<brief description of where pests observed>","treatment_rec":"<one specific chemical or integrated treatment recommendation>","organic_option":"<one organic or natural treatment alternative>","urgency":"Monitor"|"Act soon"|"Treat immediately","prevention_tip":"<one prevention tip tailored to the plant and environment>"}}`,
+          system:`You are an expert agricultural soil scientist, tropical agronomist, plant pathologist, and integrated pest management (IPM) specialist with deep knowledge of Caribbean and tropical crops including banana, plantain, scotch bonnet pepper, callaloo, dasheen, ackee, breadfruit, sugarcane, cassava, and yam. Analyze the soil or potting mix AND any visible plants, leaves, and soil surface in the image — looking carefully for any signs of pest infestation including visible insects, larvae, grubs, fungal growth, tunneling, webbing, mounding, or plant symptoms that suggest soil pest activity.${ci?` Plant: ${ci.n} (${isH?'houseplant':'farm crop'}). Optimal moisture: ${ci.l}.`:''} Respond ONLY with valid JSON, no markdown, no trailing commas: {"moisture_percent":<0-100>,"status":"Very Dry"|"Dry"|"Optimal"|"Moist"|"Wet"|"Saturated","seedling_ready":true|false,"watering_needed":true|false,"seedling_rec":"<one sentence>","watering_rec":"<one sentence tailored to plant type>","tip":"<one practical care tip>","confidence":"Low"|"Medium"|"High","visual_cue":"<brief visual description>","nutrients":{"nitrogen":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis for this estimate>"},"phosphorus":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis>"},"potassium":{"level":"Low"|"Adequate"|"High","score":<0-100>,"indicator":"<visual basis>"},"organic_matter":{"level":"Low"|"Moderate"|"High","score":<0-100>,"indicator":"<visual basis>"},"overall_health":"Poor"|"Fair"|"Good"|"Excellent","health_score":<0-100>},"plant_symptoms":{"detected":true|false,"symptoms":["<observed symptom>"],"likely_deficiency":"Nitrogen"|"Phosphorus"|"Potassium"|"Iron"|"Magnesium"|"Calcium"|"None detected","plant_health":"Poor"|"Fair"|"Good"|"Excellent"},"fertilizer_rec":"<one specific fertilizer recommendation based on deficiencies>","nutrient_disclaimer":"Visual AI estimate only — confirm with a soil test kit for precise values","pest_analysis":{"detected":true|false,"overall_severity":"None"|"Low"|"Moderate"|"High","overall_urgency":"Monitor"|"Act soon"|"Treat immediately","pests":[{"name":"<exact name e.g. Fungus gnats (Bradysia spp.)>","signs":["<specific visual sign>"],"life_stage":"Eggs"|"Larvae"|"Adult"|"Mixed","chemical_treatment":"<specific product and rate>","organic_treatment":"<specific organic product e.g. Steinernema feltiae nematodes>","home_remedy":"<household remedy e.g. cinnamon powder, hydrogen peroxide drench>","urgency":"Monitor"|"Act soon"|"Treat immediately"}],"prevention_tip":"<one prevention tip>","affected_area":"<brief>"}}`,
           messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:'Analyze the soil moisture, nutrients, and scan carefully for any pest activity. Look for visible insects, larvae, grubs, webbing, mounding, tunneling, fungal growth, or any plant symptoms suggesting soil pest infestation. If plant leaves or stems are visible, assess health, deficiency symptoms, and any pest damage.'}]}]
         })
       });
@@ -810,7 +812,7 @@ function App(){
           <div className="card" style={{borderColor:result.pest_analysis.severity==='High'?'#fca5a5':result.pest_analysis.severity==='Moderate'?'#fcd96a':undefined}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
               <div className="cl" style={{margin:0}}>🐛 Pest & disease scan</div>
-              <span style={{fontSize:11,borderRadius:20,padding:'2px 9px',fontWeight:600,background:result.pest_analysis.detected?{High:'#FFF5F5',Moderate:'#FFF9E6',Low:'#FEF3E2',None:'#F0F7E8'}[result.pest_analysis.severity]||'#F0F7E8':'#F0F7E8',color:result.pest_analysis.detected?{High:'#B91C1C',Moderate:'#92680A',Low:'#C87B00',None:'#2D5016'}[result.pest_analysis.severity]||'#2D5016':'#2D5016',border:`1px solid ${result.pest_analysis.detected?{High:'#fca5a5',Moderate:'#F5C842',Low:'#fcd96a',None:'#c8e4a0'}[result.pest_analysis.severity]||'#c8e4a0':'#c8e4a0'}`}}>{result.pest_analysis.detected?result.pest_analysis.severity+' risk':'✓ No pests detected'}</span>
+              <span style={{fontSize:11,borderRadius:20,padding:'2px 9px',fontWeight:600,background:result.pest_analysis.detected?{High:'#FFF5F5',Moderate:'#FFF9E6',Low:'#FEF3E2',None:'#F0F7E8'}[result.pest_analysis.severity]||'#F0F7E8':'#F0F7E8',color:result.pest_analysis.detected?{High:'#B91C1C',Moderate:'#92680A',Low:'#C87B00',None:'#2D5016'}[result.pest_analysis.severity]||'#2D5016':'#2D5016',border:`1px solid ${result.pest_analysis.detected?{High:'#fca5a5',Moderate:'#F5C842',Low:'#fcd96a',None:'#c8e4a0'}[result.pest_analysis.severity]||'#c8e4a0':'#c8e4a0'}`}}>{result.pest_analysis.detected?(result.pest_analysis.overall_severity||result.pest_analysis.severity||'')+' risk':'✓ No pests detected'}</span>
             </div>
             {result.pest_analysis.detected?(
               <>
@@ -965,35 +967,42 @@ function App(){
     const Readings=()=>{
       if(!hist.length)return<div className="empty"><div style={{fontSize:38,marginBottom:10}}>📊</div><div style={{fontSize:15,fontWeight:500,color:'#1C1A17',marginBottom:5}}>No readings yet</div><div style={{fontSize:13}}>Analyze your first soil sample to start your history log.</div></div>;
       const recent=hist.slice(0,10).reverse();const avg=Math.round(recent.reduce((s,h)=>s+h.result.moisture_percent,0)/recent.length);
-      const last10=hist.slice(0,10);
       return(<>
         {/* Filter tabs */}
         <div style={{display:'flex',gap:0,background:'#F8F5F0',borderRadius:9,padding:3,marginBottom:'.85rem',border:'1px solid #E5E2DC'}}>
-          {[['recent','🕐 Last 10'],['all','📋 All ('+hist.length+')']].map(([v,l])=>(
-            <button key={v} onClick={()=>setHistFilter(v)} style={{flex:1,padding:'7px',textAlign:'center',borderRadius:7,border:'none',cursor:'pointer',fontFamily:'DM Sans,sans-serif',fontSize:13,fontWeight:histFilter===v?500:400,background:histFilter===v?'#fff':'transparent',color:histFilter===v?'#3B6912':'#6B6760',transition:'all .15s',boxShadow:histFilter===v?'0 1px 3px rgba(0,0,0,.08)':'none'}}>{l}</button>
+          {[['recent','🕐 Last '+(isPro?10:FREE_HIST_LIMIT)+(isPro?'':' · Free')],['all','📋 All ('+hist.length+')'+(isPro?'':'🔒')]].map(([v,l])=>(
+            <button key={v} onClick={()=>{if(v==='all'&&!isPro){setShowPaywall(true);return;}setHistFilter(v);}} style={{flex:1,padding:'7px',textAlign:'center',borderRadius:7,border:'none',cursor:'pointer',fontFamily:'DM Sans,sans-serif',fontSize:13,fontWeight:histFilter===v?500:400,background:histFilter===v?'#fff':'transparent',color:histFilter===v?'#3B6912':v==='all'&&!isPro?'#C87B00':'#6B6760',transition:'all .15s',boxShadow:histFilter===v?'0 1px 3px rgba(0,0,0,.08)':'none'}}>{l}</button>
           ))}
         </div>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'.75rem'}}>
-          <div style={{fontSize:13,color:'#6B6760'}}>{histFilter==='recent'?`Showing ${Math.min(10,hist.length)} most recent`:hist.length+' total reading'+(hist.length!==1?'s':'')}</div>
+          <div style={{fontSize:13,color:'#6B6760'}}>{histFilter==='recent'?`Showing ${Math.min(isPro?10:FREE_HIST_LIMIT,hist.length)} most recent`:hist.length+' total reading'+(hist.length!==1?'s':'')}</div>
           {!confirmClear?<button className="btn bgh" style={{padding:'5px 11px',fontSize:12}} onClick={()=>setConfirmClear(true)}>🗑 Clear all</button>:<div style={{display:'flex',gap:6}}><button className="btn bgh" style={{padding:'5px 10px',fontSize:12}} onClick={()=>setConfirmClear(false)}>Cancel</button><button className="btn" style={{padding:'5px 10px',fontSize:12,background:'#B91C1C',color:'#fff',border:'none',borderRadius:8}} onClick={()=>{saveH([]);setConfirmClear(false);}}>Confirm</button></div>}
         </div>
         {hist.length>=2&&<div className="card"><div className="cl">Moisture trend (last {recent.length})</div><div style={{display:'flex',gap:3,alignItems:'flex-end',height:52,marginBottom:6}}>{recent.map((h,i)=><div key={i} title={`${h.result.moisture_percent}%`} style={{flex:1,background:MC(h.result.moisture_percent),borderRadius:'3px 3px 0 0',height:`${h.result.moisture_percent*.52}%`,minHeight:3}}/>)}</div><div style={{fontSize:12,color:'#6B6760'}}>Average: <strong style={{color:'#1C1A17'}}>{avg}%</strong></div></div>}
         <div className="card" style={{padding:'0 1.1rem'}}>
-          {(histFilter==='recent'?last10:hist).map((h,i)=>(
-            <div key={h.id} className="rrow" style={{borderBottom:i<hist.length-1?'1px solid #F1EDE6':'none'}}>
+          {(histFilter==='recent'?last10:hist).map((h,i)=>{
+            const last10=isPro?hist.slice(0,10):hist.slice(0,FREE_HIST_LIMIT);
+            const list=histFilter==='recent'?last10:hist;
+            return(
+            <div key={h.id} className="rrow" style={{borderBottom:i<list.length-1?'1px solid #F1EDE6':'none',cursor:'pointer'}} onClick={()=>isPro?setSelectedReading(h):setShowPaywall(true)}>
               {h.image?<img src={h.image} className="rthumb" alt=""/>:<div className="rph">{h.cropInfo?h.cropInfo.e:'🌱'}</div>}
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:4,flexWrap:'wrap'}}>
                   <span style={{fontWeight:600,fontSize:14,color:MC(h.result.moisture_percent)}}>{h.result.moisture_percent}%</span>
                   <span className="badge" style={{background:SB(h.result.status),color:SC(h.result.status)}}>{h.result.status}</span>
                   {h.result.nutrients&&<span className="badge" style={{background:HB[h.result.nutrients.overall_health]||'#f5f5f5',color:HC[h.result.nutrients.overall_health]||'#555'}}>{h.result.nutrients.overall_health}</span>}
+                  {h.result.pest_analysis?.detected&&<span className="badge" style={{background:'#FFF5F5',color:'#B91C1C'}}>🐛 {h.result.pest_analysis.overall_severity||'detected'}</span>}
                   {h.cropInfo&&<span style={{fontSize:11,color:'#6B6760'}}>{h.cropInfo.e} {h.cropInfo.n}</span>}
                 </div>
-                <div className="mbb"><div style={{height:5,borderRadius:3,width:`${h.result.moisture_percent}%`,background:MC(h.result.moisture_percent)}}/></div>
-                <div style={{fontSize:11,color:'#9A9690',display:'flex',gap:8,flexWrap:'wrap'}}><span>{fmt(h.date)}</span>{h.fieldName&&<span>📍 {h.fieldName}</span>}</div>
+                <div className="mbb"><div style={{height:5,borderRadius:3,width:h.result.moisture_percent+'%',background:MC(h.result.moisture_percent)}}/></div>
+                <div style={{fontSize:11,color:'#9A9690',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:4}}>
+                  <div style={{display:'flex',gap:8}}><span>{fmt(h.date)}</span>{h.fieldName&&<span>📍 {h.fieldName}</span>}</div>
+                  <span style={{fontSize:11,fontWeight:500,color:isPro?'#3B6912':'#C87B00'}}>{isPro?'View details →':'🔒 Pro only'}</span>
+                </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </>);
     };
@@ -1023,6 +1032,111 @@ function App(){
       </>);
     };
     return(<>
+      {/* Reading Detail Modal */}
+      {selectedReading&&isPro&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.65)',zIndex:200,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:0,overflow:'auto'}}>
+          <div style={{background:'#fff',borderRadius:'20px 20px 0 0',maxWidth:560,width:'100%',maxHeight:'92vh',overflowY:'auto',padding:'1.5rem 1.25rem 2rem'}}>
+            {/* Header */}
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.1rem'}}>
+              <div>
+                <div style={{fontSize:16,fontWeight:600,color:'#1C1A17'}}>Scan details</div>
+                <div style={{fontSize:12,color:'#6B6760',marginTop:2}}>{fmt(selectedReading.date)}{selectedReading.fieldName&&' · 📍 '+selectedReading.fieldName}</div>
+              </div>
+              <button onClick={()=>setSelectedReading(null)} style={{border:'none',background:'#F8F5F0',borderRadius:8,padding:'8px 12px',cursor:'pointer',fontSize:13,color:'#6B6760',fontFamily:'DM Sans,sans-serif'}}>✕ Close</button>
+            </div>
+            {/* Soil photo */}
+            {selectedReading.image&&<img src={selectedReading.image} style={{width:'100%',maxHeight:200,objectFit:'cover',borderRadius:12,marginBottom:'1rem',display:'block'}} alt="Soil scan"/>}
+            {/* Moisture */}
+            <div className="card" style={{marginBottom:'.75rem'}}>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'.3rem 0 .5rem'}}>
+                <Gauge pct={selectedReading.result.moisture_percent}/>
+                <span className="badge" style={{background:SB(selectedReading.result.status),color:SC(selectedReading.result.status),marginTop:5,padding:'4px 16px',fontSize:13,fontWeight:500}}>{selectedReading.result.status}</span>
+              </div>
+              {selectedReading.result.visual_cue&&<div style={{fontSize:12,color:'#6B6760',textAlign:'center',marginTop:6,lineHeight:1.4}}>{selectedReading.result.visual_cue}</div>}
+              <div style={{display:'flex',gap:6,flexWrap:'wrap',justifyContent:'center',marginTop:8}}>
+                {selectedReading.cropInfo&&<span className="pill">{selectedReading.cropInfo.e} {selectedReading.cropInfo.n}</span>}
+                {selectedReading.coords&&<span className="pill">🗺 {selectedReading.coords.lat}</span>}
+                <span className="pill">{selectedReading.result.confidence} confidence</span>
+              </div>
+            </div>
+            {/* Recommendations */}
+            <div className="card" style={{marginBottom:'.75rem'}}>
+              <div className="cl">Recommendations</div>
+              {[{icon:selectedReading.result.seedling_ready?'✅':'⏸️',bg:selectedReading.result.seedling_ready?'#F0F7E8':'#FFF5F0',lbl:selectedReading.isHouse?'Repotting & health':'Planting seedlings',txt:selectedReading.result.seedling_rec},{icon:selectedReading.result.watering_needed?'💧':'🚫',bg:selectedReading.result.watering_needed?'#E3F2FD':'#F0F7E8',lbl:'Watering',txt:selectedReading.result.watering_rec}].map((r,i)=>(
+                <div key={i} style={{display:'flex',gap:11,padding:'9px 0',borderBottom:i===0?'1px solid #F1EDE6':'none'}}>
+                  <div style={{width:34,height:34,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:17,background:r.bg,flexShrink:0}}>{r.icon}</div>
+                  <div><div style={{fontSize:11,color:'#6B6760',margin:'2px 0',textTransform:'uppercase',letterSpacing:'.06em'}}>{r.lbl}</div><div style={{fontSize:13,color:'#1C1A17',lineHeight:1.5}}>{r.txt}</div></div>
+                </div>
+              ))}
+              {selectedReading.result.tip&&<div className="tipbox"><div style={{fontSize:12,color:'#2D5016',fontWeight:500,marginBottom:3}}>💡 Care tip</div><div style={{fontSize:13,color:'#2d5410',lineHeight:1.5}}>{selectedReading.result.tip}</div></div>}
+            </div>
+            {/* Nutrients */}
+            {selectedReading.result.nutrients&&(
+              <div className="card" style={{marginBottom:'.75rem'}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+                  <div className="cl" style={{margin:0}}>Nutrient analysis</div>
+                  <span style={{fontSize:11,background:'#FEF3E2',color:'#C87B00',border:'1px solid #fcd96a',borderRadius:20,padding:'2px 9px',fontWeight:500}}>AI estimate</span>
+                </div>
+                <NBar label="Nitrogen (N)" emoji="🌿" level={selectedReading.result.nutrients.nitrogen.level} score={selectedReading.result.nutrients.nitrogen.score} indicator={selectedReading.result.nutrients.nitrogen.indicator}/>
+                <NBar label="Phosphorus (P)" emoji="🌸" level={selectedReading.result.nutrients.phosphorus.level} score={selectedReading.result.nutrients.phosphorus.score} indicator={selectedReading.result.nutrients.phosphorus.indicator}/>
+                <NBar label="Potassium (K)" emoji="💪" level={selectedReading.result.nutrients.potassium.level} score={selectedReading.result.nutrients.potassium.score} indicator={selectedReading.result.nutrients.potassium.indicator}/>
+                <NBar label="Organic matter" emoji="🍂" level={selectedReading.result.nutrients.organic_matter.level} score={selectedReading.result.nutrients.organic_matter.score} indicator={selectedReading.result.nutrients.organic_matter.indicator}/>
+                <div style={{borderTop:'1px solid #F1EDE6',paddingTop:10,marginTop:4,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                  <div><div style={{fontSize:12,color:'#6B6760',marginBottom:3}}>Soil health</div><div style={{fontSize:16,fontWeight:600,color:HC[selectedReading.result.nutrients.overall_health]||'#555'}}>{selectedReading.result.nutrients.overall_health}</div></div>
+                  <div style={{width:52,height:52,borderRadius:'50%',background:'#F8F5F0',border:'3px solid '+(HC[selectedReading.result.nutrients.overall_health]||'#555'),display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column'}}>
+                    <span style={{fontSize:15,fontWeight:700,color:HC[selectedReading.result.nutrients.overall_health]||'#555',lineHeight:1}}>{selectedReading.result.nutrients.health_score}</span>
+                    <span style={{fontSize:9,color:'#6B6760'}}>/100</span>
+                  </div>
+                </div>
+                {selectedReading.result.fertilizer_rec&&<div style={{background:'#E3F2FD',border:'1px solid #90CAF9',borderRadius:10,padding:'9px 12px',marginTop:10}}><div style={{fontSize:12,fontWeight:500,color:'#1565C0',marginBottom:2}}>🌿 Fertilizer</div><div style={{fontSize:13,color:'#1565C0',lineHeight:1.5}}>{selectedReading.result.fertilizer_rec}</div></div>}
+              </div>
+            )}
+            {/* Pest analysis - new rich format */}
+            {selectedReading.result.pest_analysis&&(
+              <div className="card" style={{marginBottom:'.75rem',borderColor:selectedReading.result.pest_analysis.overall_severity==='High'?'#fca5a5':selectedReading.result.pest_analysis.overall_severity==='Moderate'?'#fcd96a':undefined}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+                  <div className="cl" style={{margin:0}}>🐛 Pest & disease</div>
+                  <span style={{fontSize:11,borderRadius:20,padding:'2px 9px',fontWeight:600,background:selectedReading.result.pest_analysis.detected?{High:'#FFF5F5',Moderate:'#FFF9E6',Low:'#FEF3E2',None:'#F0F7E8'}[selectedReading.result.pest_analysis.overall_severity]||'#F0F7E8':'#F0F7E8',color:selectedReading.result.pest_analysis.detected?{High:'#B91C1C',Moderate:'#92680A',Low:'#C87B00',None:'#2D5016'}[selectedReading.result.pest_analysis.overall_severity]||'#2D5016':'#2D5016',border:'1px solid '+(selectedReading.result.pest_analysis.detected?{High:'#fca5a5',Moderate:'#F5C842',Low:'#fcd96a',None:'#c8e4a0'}[selectedReading.result.pest_analysis.overall_severity]||'#c8e4a0':'#c8e4a0')}}>{selectedReading.result.pest_analysis.detected?(selectedReading.result.pest_analysis.overall_severity||'')+ ' risk':'✓ Clear'}</span>
+                </div>
+                {selectedReading.result.pest_analysis.detected&&selectedReading.result.pest_analysis.pests?.length>0?(
+                  selectedReading.result.pest_analysis.pests.map((pest,pi)=>(
+                    <div key={pi} style={{background:'#F8F5F0',border:'1px solid #E5E2DC',borderRadius:12,padding:'12px',marginBottom:10}}>
+                      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:8}}>
+                        <div style={{fontWeight:600,fontSize:14,color:'#B91C1C',flex:1}}>{pest.name}</div>
+                        <span style={{fontSize:11,background:'#FFF5F5',color:'#B91C1C',borderRadius:20,padding:'2px 9px',border:'1px solid #fca5a5',flexShrink:0,marginLeft:8}}>{pest.urgency}</span>
+                      </div>
+                      {pest.life_stage&&<div style={{fontSize:12,color:'#6B6760',marginBottom:6}}>Life stage: <strong style={{color:'#1C1A17'}}>{pest.life_stage}</strong></div>}
+                      {pest.signs?.length>0&&<div style={{marginBottom:8}}><div style={{fontSize:11,color:'#6B6760',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:4}}>Signs observed</div><ul style={{paddingLeft:14,margin:0}}>{pest.signs.map((s,si)=><li key={si} style={{fontSize:12,color:'#1C1A17',lineHeight:1.5}}>{s}</li>)}</ul></div>}
+                      {pest.chemical_treatment&&<div style={{background:'#FFF5F5',border:'1px solid #fca5a5',borderRadius:8,padding:'8px 10px',marginBottom:6}}><div style={{fontSize:11,fontWeight:600,color:'#B91C1C',marginBottom:2}}>💊 Chemical treatment</div><div style={{fontSize:12,color:'#B91C1C',lineHeight:1.4}}>{pest.chemical_treatment}</div></div>}
+                      {pest.organic_treatment&&<div style={{background:'#F0F7E8',border:'1px solid #c8e4a0',borderRadius:8,padding:'8px 10px',marginBottom:6}}><div style={{fontSize:11,fontWeight:600,color:'#2D5016',marginBottom:2}}>🌿 Organic treatment</div><div style={{fontSize:12,color:'#2d5410',lineHeight:1.4}}>{pest.organic_treatment}</div></div>}
+                      {pest.home_remedy&&<div style={{background:'#FEF3E2',border:'1px solid #fcd96a',borderRadius:8,padding:'8px 10px'}}><div style={{fontSize:11,fontWeight:600,color:'#92680A',marginBottom:2}}>🏠 Home remedy</div><div style={{fontSize:12,color:'#92680A',lineHeight:1.4}}>{pest.home_remedy}</div></div>}
+                    </div>
+                  ))
+                ):(
+                  !selectedReading.result.pest_analysis.detected&&(
+                    <div style={{display:'flex',alignItems:'center',gap:12,padding:'6px 0'}}>
+                      <div style={{width:34,height:34,borderRadius:8,background:'#F0F7E8',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>✅</div>
+                      <div><div style={{fontSize:13,fontWeight:500,color:'#2D5016'}}>No pest activity detected</div><div style={{fontSize:12,color:'#6B6760',marginTop:2}}>Continue regular monitoring.</div></div>
+                    </div>
+                  )
+                )}
+                {selectedReading.result.pest_analysis.prevention_tip&&<div style={{fontSize:12,color:'#6B6760',lineHeight:1.5,borderTop:'1px solid #F1EDE6',paddingTop:10,marginTop:4}}>🛡 Prevention: {selectedReading.result.pest_analysis.prevention_tip}</div>}
+              </div>
+            )}
+            {/* Plant symptoms */}
+            {selectedReading.result.plant_symptoms?.detected&&(
+              <div className="card" style={{marginBottom:'.75rem'}}>
+                <div className="cl">Plant symptoms</div>
+                <div style={{fontSize:13,fontWeight:500,color:'#1C1A17',marginBottom:5}}>Likely deficiency: <span style={{color:'#C87B00'}}>{selectedReading.result.plant_symptoms.likely_deficiency}</span></div>
+                {selectedReading.result.plant_symptoms.symptoms?.length>0&&<ul style={{paddingLeft:16,margin:'0 0 8px'}}>{selectedReading.result.plant_symptoms.symptoms.map((s,i)=><li key={i} style={{fontSize:13,color:'#1C1A17',lineHeight:1.6}}>{s}</li>)}</ul>}
+                <span className="badge" style={{background:HB[selectedReading.result.plant_symptoms.plant_health]||'#f5f5f5',color:HC[selectedReading.result.plant_symptoms.plant_health]||'#555'}}>Plant health: {selectedReading.result.plant_symptoms.plant_health}</span>
+              </div>
+            )}
+            <button className="btn bg bw" onClick={()=>setSelectedReading(null)}>← Back to history</button>
+          </div>
+        </div>
+      )}
+      {/* Pro prompt for free users tapping history */}
       <div style={{display:'flex',gap:0,background:'#F8F5F0',borderRadius:9,padding:3,marginBottom:'.85rem',border:'1px solid #E5E2DC'}}>
         {[['readings','📋 Readings '+(hist.length?`(${hist.length})`:'')],['fields','🗺 Fields '+(fields.length?`(${fields.length})`:'')]].map(([v,l])=><button key={v} onClick={()=>setHistView(v)} style={{flex:1,padding:'7px',textAlign:'center',borderRadius:7,border:'none',cursor:'pointer',fontFamily:'DM Sans,sans-serif',fontSize:13,fontWeight:histView===v?500:400,background:histView===v?'#fff':'transparent',color:histView===v?'#3B6912':'#6B6760',transition:'all .15s',boxShadow:histView===v?'0 1px 3px rgba(0,0,0,.08)':'none'}}>{l}</button>)}
       </div>
@@ -1128,7 +1242,7 @@ function App(){
 
             {/* Free plan note */}
             <div style={{background:'#FEF3E2',border:'1px solid #fcd96a',borderRadius:10,padding:'10px 13px',marginBottom:'1.25rem',fontSize:12,color:'#92680A',lineHeight:1.5}}>
-              <strong>Free plan includes {FREE_SCAN_LIMIT} scans per month</strong> with moisture analysis. Upgrade to Pro for nutrients, pest detection, weather, and unlimited scans.
+              <strong>Free plan includes {FREE_SCAN_LIMIT} scans per month</strong> with moisture analysis and your last {FREE_HIST_LIMIT} readings in history. Upgrade to Pro for nutrients, pest detection, full history, and unlimited scans.
             </div>
 
             {/* CTA */}
@@ -1153,7 +1267,7 @@ function App(){
             </div>
             {/* Feature comparison */}
             <div style={{background:'#F8F5F0',borderRadius:12,padding:'1rem',marginBottom:'1rem'}}>
-              {[['💧 Moisture analysis','✓','✓'],['🌿 Nutrient analysis (NPK)','✗','✓'],['🐛 Pest & disease detection','✗','✓'],['🌤 Weather integration','✗','✓'],['📊 Field history & comparison','✗','✓'],['📋 Shareable reports','✗','✓'],['🌴 All 84 plant types','✗','✓']].map(([f,fr,pr])=>(
+              {[['💧 Moisture analysis','✓','✓'],['🌿 Nutrient analysis (NPK)','✗','✓'],['🐛 Pest & disease detection','✗','✓'],['🌤 Weather integration','✗','✓'],['📊 Full history (5 limit free)','⚠','✓'],['📋 Shareable reports','✗','✓'],['🌴 All 84 plant types','✗','✓']].map(([f,fr,pr])=>(
                 <div key={f} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'5px 0',borderBottom:'1px solid #F1EDE6',fontSize:13}}>
                   <span style={{color:'#1C1A17'}}>{f}</span>
                   <div style={{display:'flex',gap:24,flexShrink:0}}>
