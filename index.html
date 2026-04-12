@@ -966,7 +966,10 @@ function App(){
     const [histFilter,setHistFilter]=useState('all');
     const Readings=()=>{
       if(!hist.length)return<div className="empty"><div style={{fontSize:38,marginBottom:10}}>📊</div><div style={{fontSize:15,fontWeight:500,color:'#1C1A17',marginBottom:5}}>No readings yet</div><div style={{fontSize:13}}>Analyze your first soil sample to start your history log.</div></div>;
-      const recent=hist.slice(0,10).reverse();const avg=Math.round(recent.reduce((s,h)=>s+h.result.moisture_percent,0)/recent.length);
+      const recent=hist.slice(0,10).reverse();
+      const avg=Math.round(recent.reduce((s,h)=>s+h.result.moisture_percent,0)/recent.length);
+      const last10=isPro?hist.slice(0,10):hist.slice(0,FREE_HIST_LIMIT);
+      const displayList=histFilter==='recent'?last10:hist;
       return(<>
         {/* Filter tabs */}
         <div style={{display:'flex',gap:0,background:'#F8F5F0',borderRadius:9,padding:3,marginBottom:'.85rem',border:'1px solid #E5E2DC'}}>
@@ -980,11 +983,8 @@ function App(){
         </div>
         {hist.length>=2&&<div className="card"><div className="cl">Moisture trend (last {recent.length})</div><div style={{display:'flex',gap:3,alignItems:'flex-end',height:52,marginBottom:6}}>{recent.map((h,i)=><div key={i} title={`${h.result.moisture_percent}%`} style={{flex:1,background:MC(h.result.moisture_percent),borderRadius:'3px 3px 0 0',height:`${h.result.moisture_percent*.52}%`,minHeight:3}}/>)}</div><div style={{fontSize:12,color:'#6B6760'}}>Average: <strong style={{color:'#1C1A17'}}>{avg}%</strong></div></div>}
         <div className="card" style={{padding:'0 1.1rem'}}>
-          {(histFilter==='recent'?last10:hist).map((h,i)=>{
-            const last10=isPro?hist.slice(0,10):hist.slice(0,FREE_HIST_LIMIT);
-            const list=histFilter==='recent'?last10:hist;
-            return(
-            <div key={h.id} className="rrow" style={{borderBottom:i<list.length-1?'1px solid #F1EDE6':'none',cursor:'pointer'}} onClick={()=>isPro?setSelectedReading(h):setShowPaywall(true)}>
+          {displayList.map((h,i)=>(
+            <div key={h.id} className="rrow" style={{borderBottom:i<displayList.length-1?'1px solid #F1EDE6':'none',cursor:'pointer'}} onClick={()=>setSelectedReading(h)}>
               {h.image?<img src={h.image} className="rthumb" alt=""/>:<div className="rph">{h.cropInfo?h.cropInfo.e:'🌱'}</div>}
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:4,flexWrap:'wrap'}}>
@@ -995,14 +995,13 @@ function App(){
                   {h.cropInfo&&<span style={{fontSize:11,color:'#6B6760'}}>{h.cropInfo.e} {h.cropInfo.n}</span>}
                 </div>
                 <div className="mbb"><div style={{height:5,borderRadius:3,width:h.result.moisture_percent+'%',background:MC(h.result.moisture_percent)}}/></div>
-                <div style={{fontSize:11,color:'#9A9690',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:4}}>
+                <div style={{fontSize:11,color:'#9A9690',display:'flex',justifyContent:'space-between',alignItems:'center',gap:4}}>
                   <div style={{display:'flex',gap:8}}><span>{fmt(h.date)}</span>{h.fieldName&&<span>📍 {h.fieldName}</span>}</div>
-                  <span style={{fontSize:11,fontWeight:500,color:isPro?'#3B6912':'#C87B00'}}>{isPro?'View details →':'🔒 Pro only'}</span>
+                  <span style={{fontSize:11,fontWeight:500,color:'#3B6912'}}>View details →</span>
                 </div>
               </div>
             </div>
-            );
-          })}
+          ))}
         </div>
       </>);
     };
@@ -1033,7 +1032,7 @@ function App(){
     };
     return(<>
       {/* Reading Detail Modal */}
-      {selectedReading&&isPro&&(
+      {selectedReading&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.65)',zIndex:200,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:0,overflow:'auto'}}>
           <div style={{background:'#fff',borderRadius:'20px 20px 0 0',maxWidth:560,width:'100%',maxHeight:'92vh',overflowY:'auto',padding:'1.5rem 1.25rem 2rem'}}>
             {/* Header */}
@@ -1070,8 +1069,8 @@ function App(){
               ))}
               {selectedReading.result.tip&&<div className="tipbox"><div style={{fontSize:12,color:'#2D5016',fontWeight:500,marginBottom:3}}>💡 Care tip</div><div style={{fontSize:13,color:'#2d5410',lineHeight:1.5}}>{selectedReading.result.tip}</div></div>}
             </div>
-            {/* Nutrients */}
-            {selectedReading.result.nutrients&&(
+            {/* Nutrients — Pro only */}
+            {selectedReading.result.nutrients&&isPro&&(
               <div className="card" style={{marginBottom:'.75rem'}}>
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
                   <div className="cl" style={{margin:0}}>Nutrient analysis</div>
@@ -1091,8 +1090,8 @@ function App(){
                 {selectedReading.result.fertilizer_rec&&<div style={{background:'#E3F2FD',border:'1px solid #90CAF9',borderRadius:10,padding:'9px 12px',marginTop:10}}><div style={{fontSize:12,fontWeight:500,color:'#1565C0',marginBottom:2}}>🌿 Fertilizer</div><div style={{fontSize:13,color:'#1565C0',lineHeight:1.5}}>{selectedReading.result.fertilizer_rec}</div></div>}
               </div>
             )}
-            {/* Pest analysis - new rich format */}
-            {selectedReading.result.pest_analysis&&(
+            {/* Pest analysis — Pro only */}
+            {selectedReading.result.pest_analysis&&isPro&&(
               <div className="card" style={{marginBottom:'.75rem',borderColor:selectedReading.result.pest_analysis.overall_severity==='High'?'#fca5a5':selectedReading.result.pest_analysis.overall_severity==='Moderate'?'#fcd96a':undefined}}>
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
                   <div className="cl" style={{margin:0}}>🐛 Pest & disease</div>
@@ -1121,6 +1120,15 @@ function App(){
                   )
                 )}
                 {selectedReading.result.pest_analysis.prevention_tip&&<div style={{fontSize:12,color:'#6B6760',lineHeight:1.5,borderTop:'1px solid #F1EDE6',paddingTop:10,marginTop:4}}>🛡 Prevention: {selectedReading.result.pest_analysis.prevention_tip}</div>}
+              </div>
+            )}
+            {/* Pro upsell inside modal for free users */}
+            {!isPro&&(
+              <div style={{background:'linear-gradient(135deg,#1a2e0b 0%,#2D5016 100%)',borderRadius:12,padding:'1rem',marginBottom:'.75rem',textAlign:'center'}}>
+                <div style={{fontSize:24,marginBottom:6}}>🌿</div>
+                <div style={{fontSize:14,fontWeight:600,color:'#d4edaa',marginBottom:4}}>Upgrade for full analysis</div>
+                <div style={{fontSize:12,color:'#a8c87a',marginBottom:12,lineHeight:1.5}}>Pro unlocks nutrients, pest detection, and detailed treatment recommendations.</div>
+                <button style={{background:'#6FA832',color:'#fff',border:'none',borderRadius:9,padding:'9px 20px',fontFamily:'DM Sans,sans-serif',fontSize:13,fontWeight:600,cursor:'pointer'}} onClick={()=>{setSelectedReading(null);setShowPaywall(true);}}>Upgrade to Pro</button>
               </div>
             )}
             {/* Plant symptoms */}
