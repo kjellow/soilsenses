@@ -1195,7 +1195,7 @@ function App(){
               </div>
             )}
             <button style={{width:'100%',background:'transparent',border:'none',color:'#9A9690',fontSize:13,cursor:'pointer',fontFamily:'DM Sans,sans-serif',padding:'4px'}} onClick={()=>{setShowPaywall(false);setShowLicenseInput(false);setLicenseMsg('');}}>
-              {scansUsed<FREE_SCAN_LIMIT?'Continue with free plan':'Maybe later'}
+              {(scansUsed<FREE_SCAN_LIMIT)?'Continue with free plan':'Maybe later'}
             </button>
           </div>
         </div>
